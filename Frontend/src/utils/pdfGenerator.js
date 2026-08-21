@@ -431,8 +431,17 @@ export function generateAuditReportPDF(reportData) {
 
     y += 9.5;
 
+<<<<<<< HEAD
     // Telemetry metadata line
     doc.setFontSize(6.2);
+=======
+    // Observed Evidence Metadata Table
+    const ev = finding.observedEvidence || {};
+    const formattedSource = ev.source === 'APPLICATION_LOG' ? 'Application Log' : ev.source === 'EVENT_BUS' ? 'Event Bus' : ev.source === 'DATABASE' ? 'Database' : ev.source || 'Application';
+    const evText = `Endpoint: ${ev.endpoint || 'Internal'}  |  Source: ${formattedSource}  |  PII Involved: ${(ev.detectedData || []).join(', ') || 'Personal Data'}  |  Occurrences: ${ev.occurrences || 1}x`;
+
+    doc.setTextColor(...TEXT_MUTED);
+>>>>>>> f91fa3991466ec5139aa0b0efcc6ea78f80f6189
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...TEXT_MUTED);
     doc.text('TELEMETRY:', margin + 3, y);
@@ -444,9 +453,15 @@ export function generateAuditReportPDF(reportData) {
     // POINT A: Reason for Breach
     doc.setTextColor(...CRITICAL);
     doc.setFont('helvetica', 'bold');
+<<<<<<< HEAD
     doc.setFontSize(6.5);
     doc.text('🚨 Statutory Non-Compliance Reason:', margin + 3, y);
     y += 3.2;
+=======
+    doc.setFontSize(7.5);
+    doc.text('Statutory Violation Reason:', margin + 3, y);
+    y += 3.5;
+>>>>>>> f91fa3991466ec5139aa0b0efcc6ea78f80f6189
 
     doc.setTextColor(...TEXT_DARK);
     doc.setFont('helvetica', 'normal');
@@ -455,12 +470,22 @@ export function generateAuditReportPDF(reportData) {
     doc.text(reasonLines, margin + 3, y);
     y += (reasonLines.length * 2.8) + 1.5;
 
+<<<<<<< HEAD
     // POINT B: Root Cause & AI Analysis
     doc.setTextColor(...PRIMARY);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(6.5);
     doc.text('🤖 Root-Cause & AI Analysis:', margin + 3, y);
     y += 3.2;
+=======
+    // POINT B: AI Root Cause Analysis & Impact
+    if (finding.aiExplanation) {
+      doc.setTextColor(...PRIMARY);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.text('Detailed Compliance Explanation:', margin + 3, y);
+      y += 3.5;
+>>>>>>> f91fa3991466ec5139aa0b0efcc6ea78f80f6189
 
     doc.setTextColor(...TEXT_DARK);
     doc.setFont('helvetica', 'normal');
@@ -472,9 +497,15 @@ export function generateAuditReportPDF(reportData) {
     // POINT C: Prescribed Remediation
     doc.setTextColor(...LOW);
     doc.setFont('helvetica', 'bold');
+<<<<<<< HEAD
     doc.setFontSize(6.5);
     doc.text('✅ Prescribed Remediation & Fix:', margin + 3, y);
     y += 3.2;
+=======
+    doc.setFontSize(7.5);
+    doc.text('Prescribed Remediation & Solution:', margin + 3, y);
+    y += 3.5;
+>>>>>>> f91fa3991466ec5139aa0b0efcc6ea78f80f6189
 
     doc.setTextColor(...TEXT_DARK);
     doc.setFont('helvetica', 'normal');
