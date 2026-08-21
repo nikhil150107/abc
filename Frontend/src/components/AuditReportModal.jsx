@@ -7,7 +7,10 @@ export default function AuditReportModal({ report, onClose }) {
   const exec = report.executiveSummary || {};
   const findings = report.statutoryFindings || [];
   const score = parseInt(exec.complianceHealthScore) || 60;
-  const scoreColor = score >= 80 ? '#18794E' : score >= 50 ? '#B54708' : '#C43232';
+  
+  // Use semantic colors based on score
+  const scoreColor = score >= 80 ? 'var(--color-compliant)' : score >= 50 ? 'var(--color-medium)' : 'var(--color-high)';
+  const scoreBg = score >= 80 ? 'var(--bg-compliant)' : score >= 50 ? 'var(--bg-medium)' : 'var(--bg-high)';
 
   const handleDownloadPDF = () => {
     generateAuditReportPDF({ report });
@@ -18,180 +21,184 @@ export default function AuditReportModal({ report, onClose }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose} style={{ zIndex: 9999 }}>
+    <div className="ds-modal-overlay" onClick={onClose} style={{ zIndex: 9999 }}>
       <div
-        className="modal-card"
+        className="ds-modal"
         onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: '900px', width: '95%', maxHeight: '90vh', overflowY: 'auto', padding: '2rem' }}
+        style={{ maxWidth: '900px', width: '95%', maxHeight: '90vh' }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #E2E8F0', paddingBottom: '1rem' }}>
+        <div className="ds-modal-header ds-items-center">
           <div>
-            <span style={{ fontSize: '0.8rem', fontWeight: '700', color: '#4F46E5', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            <span className="ds-heading-3 ds-text-muted ds-mb-sm" style={{ display: 'block' }}>
               Official Regulatory Audit Document
             </span>
-            <h2 style={{ margin: '4px 0 0 0', fontSize: '1.4rem', color: '#0F172A' }}>
+            <h2 className="ds-heading-1" style={{ fontSize: '20px' }}>
               DPDPA Statutory Compliance Audit Report
             </h2>
           </div>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button className="btn btn-primary btn-sm" onClick={handleDownloadPDF} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              📥 Download as PDF
+          <div className="ds-flex ds-gap-sm">
+            <button className="ds-btn ds-btn-primary" onClick={handleDownloadPDF}>
+              Download PDF
             </button>
-            <button className="btn btn-secondary btn-sm" onClick={handlePrint} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              🖨️ Print
+            <button className="ds-btn ds-btn-secondary" onClick={handlePrint}>
+              Print
             </button>
-            <button className="modal-close" onClick={onClose}>✕</button>
+            <button className="ds-modal-close" onClick={onClose}>✕</button>
           </div>
         </div>
 
-        {/* EXECUTIVE HEADER CARD */}
-        <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '1.5rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-          <div>
-            <p style={{ margin: '0 0 4px 0', fontSize: '0.9rem' }}><b>Target Application:</b> {report.targetApplication || 'DemoApp Technologies Pvt. Ltd.'}</p>
-            <p style={{ margin: '0 0 4px 0', fontSize: '0.85rem', color: '#64748B' }}><b>Auditor Authority:</b> {report.auditAuthority || 'PrivGuard Autonomous Platform'}</p>
-            <p style={{ margin: '0 0 4px 0', fontSize: '0.85rem', color: '#64748B' }}><b>Legal Reference:</b> Digital Personal Data Protection Act 2023 & DPDP Rules 2025 (MeitY)</p>
-            <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748B' }}><b>Generated At:</b> {new Date(report.generatedAt).toLocaleString()}</p>
-          </div>
-
-          <div style={{ background: scoreColor, color: 'white', padding: '1rem 1.5rem', borderRadius: '10px', textAlign: 'center', minWidth: '150px' }}>
-            <div style={{ fontSize: '2rem', fontWeight: '800', lineHeight: 1 }}>{score}%</div>
-            <div style={{ fontSize: '0.75rem', fontWeight: '600', marginTop: '4px', textTransform: 'uppercase' }}>
-              {exec.overallPosture?.replace(/_/g, ' ') || 'HEALTH SCORE'}
-            </div>
-          </div>
-        </div>
-
-        {/* SEVERITY BREAKDOWN PILLS */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '1.5rem' }}>
-          <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', padding: '10px', borderRadius: '8px', textAlign: 'center' }}>
-            <div style={{ color: '#991B1B', fontWeight: '700', fontSize: '1.2rem' }}>{exec.severityBreakdown?.CRITICAL || 0}</div>
-            <div style={{ fontSize: '0.75rem', color: '#991B1B', fontWeight: '600' }}>Critical Breaches</div>
-          </div>
-          <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', padding: '10px', borderRadius: '8px', textAlign: 'center' }}>
-            <div style={{ color: '#DC2626', fontWeight: '700', fontSize: '1.2rem' }}>{exec.severityBreakdown?.HIGH || 0}</div>
-            <div style={{ fontSize: '0.75rem', color: '#DC2626', fontWeight: '600' }}>High Risk</div>
-          </div>
-          <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', padding: '10px', borderRadius: '8px', textAlign: 'center' }}>
-            <div style={{ color: '#D97706', fontWeight: '700', fontSize: '1.2rem' }}>{exec.severityBreakdown?.MEDIUM || 0}</div>
-            <div style={{ fontSize: '0.75rem', color: '#D97706', fontWeight: '600' }}>Medium Risk</div>
-          </div>
-          <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', padding: '10px', borderRadius: '8px', textAlign: 'center' }}>
-            <div style={{ color: '#166534', fontWeight: '700', fontSize: '1.2rem' }}>{exec.severityBreakdown?.LOW || 0}</div>
-            <div style={{ fontSize: '0.75rem', color: '#166534', fontWeight: '600' }}>Low Risk</div>
-          </div>
-        </div>
-
-        {/* 5-PILLAR TABLE */}
-        <h3 style={{ fontSize: '1.1rem', color: '#1E1B4B', marginBottom: '0.75rem' }}>
-          1. Statutory 5-Pillar Compliance Assessment Matrix
-        </h3>
-        <div className="table-wrapper" style={{ marginBottom: '2rem' }}>
-          <table>
-            <thead>
-              <tr>
-                <th>Pillar / Statutory Control</th>
-                <th>DPDPA Section</th>
-                <th>Scope & Evidence Examined</th>
-                <th>Pillar Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><b>Pillar 1: Notice & Purpose Specification</b></td>
-                <td><span className="badge badge-blue">Sec 5 & 6</span></td>
-                <td>Itemized notices, declared purpose limitation clauses, DPO contacts</td>
-                <td><span className="badge badge-green">PASS (100%)</span></td>
-              </tr>
-              <tr>
-                <td><b>Pillar 2: Data Principal Rights Center</b></td>
-                <td><span className="badge badge-blue">Sec 11-14</span></td>
-                <td>Access (Sec 11), Erasure (Sec 12), Grievance (Sec 13), Nominee (Sec 14)</td>
-                <td><span className="badge badge-green">PASS (100%)</span></td>
-              </tr>
-              <tr>
-                <td><b>Pillar 3: Log Sanitization & Safeguards</b></td>
-                <td><span className="badge badge-blue">Sec 8(5)</span></td>
-                <td>Prevention of plaintext personal identifiers (Email, Phone, PAN) in logs</td>
-                <td><span className="badge badge-red">{exec.severityBreakdown?.CRITICAL > 0 ? 'FAIL (CRITICAL)' : 'ATTENTION (50%)'}</span></td>
-              </tr>
-              <tr>
-                <td><b>Pillar 4: Purpose Limitation & Use Scope</b></td>
-                <td><span className="badge badge-blue">Sec 6(1)</span></td>
-                <td>Restricting data processing exclusively to declared collection scope</td>
-                <td><span className="badge badge-yellow">ATTENTION (75%)</span></td>
-              </tr>
-              <tr>
-                <td><b>Pillar 5: Consent Lifecycle & Retention</b></td>
-                <td><span className="badge badge-blue">Sec 6(4) & 8(7)</span></td>
-                <td>Ceasing processing upon consent withdrawal & purging expired telemetry</td>
-                <td><span className="badge badge-yellow">ATTENTION (50%)</span></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        {/* ITEMIZED FINDINGS */}
-        <h3 style={{ fontSize: '1.1rem', color: '#1E1B4B', marginBottom: '0.75rem' }}>
-          2. Detailed Statutory Findings, Breach Reasons & Prescribed Solutions
-        </h3>
-
-        {findings.map((f, i) => (
-          <div key={i} style={{ border: '1px solid #E2E8F0', borderRadius: '10px', padding: '1.25rem', marginBottom: '1rem', background: '#FFFFFF' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <h4 style={{ margin: 0, color: '#1E1B4B', fontSize: '0.95rem' }}>
-                Finding #{i + 1}: {f.title}
-                {f.observedEvidence?.occurrences > 1 && (
-                  <span style={{ marginLeft: 8, fontSize: '0.75rem', background: '#FEF08A', color: '#854D0E', padding: '2px 8px', borderRadius: 4, fontWeight: 700 }}>
-                    {f.observedEvidence.occurrences}x occurrences
-                  </span>
-                )}
-              </h4>
-              <span className={`badge ${f.severity === 'CRITICAL' ? 'badge-purple' : f.severity === 'HIGH' ? 'badge-red' : 'badge-yellow'}`}>
-                {f.severity} (Risk: {f.riskScore}/100)
-              </span>
+        <div className="ds-modal-body">
+          {/* EXECUTIVE HEADER CARD */}
+          <div className="ds-card ds-mb-lg ds-flex-between" style={{ padding: '24px', flexDirection: 'row', flexWrap: 'wrap', gap: '16px' }}>
+            <div>
+              <p className="ds-text-body ds-mb-sm"><span className="ds-font-semibold">Target Application:</span> {report.targetApplication || 'DemoApp Technologies Pvt. Ltd.'}</p>
+              <p className="ds-text-small ds-text-muted ds-mb-sm"><span className="ds-font-semibold ds-text-secondary">Auditor Authority:</span> {report.auditAuthority || 'PrivGuard Autonomous Platform'}</p>
+              <p className="ds-text-small ds-text-muted ds-mb-sm"><span className="ds-font-semibold ds-text-secondary">Legal Reference:</span> Digital Personal Data Protection Act 2023 & DPDP Rules 2025 (MeitY)</p>
+              <p className="ds-text-small ds-text-muted"><span className="ds-font-semibold ds-text-secondary">Generated At:</span> {new Date(report.generatedAt).toLocaleString()}</p>
             </div>
 
-            <div style={{ fontSize: '0.8rem', color: '#64748B', marginBottom: '10px', background: '#F8FAFC', padding: '6px 10px', borderRadius: '6px' }}>
-              <b>Observed Telemetry:</b> Endpoint: <code>{f.observedEvidence?.endpoint || '/api'}</code> | Source: <b>{f.observedEvidence?.source}</b> | PII Detected: <b>{(f.observedEvidence?.detectedData || []).join(', ')}</b>
-            </div>
-
-            <div style={{ marginBottom: '8px' }}>
-              <div style={{ fontSize: '0.82rem', fontWeight: '700', color: '#DC2626', marginBottom: '2px' }}>
-                🚨 Reason for Data Breach & Non-Compliance:
+            <div style={{ background: 'var(--bg-secondary)', color: scoreColor, border: `1px solid var(--border-medium)`, borderLeft: `4px solid ${scoreColor}`, padding: '16px 24px', borderRadius: 'var(--radius-md)', textAlign: 'center', minWidth: '150px' }}>
+              <div style={{ fontSize: '32px', fontWeight: '700', lineHeight: 1 }}>{score}%</div>
+              <div className="ds-heading-3 ds-mt-sm" style={{ color: scoreColor }}>
+                {exec.overallPosture?.replace(/_/g, ' ') || 'HEALTH SCORE'}
               </div>
-              <p style={{ margin: 0, fontSize: '0.85rem', color: '#334155', lineHeight: '1.5' }}>
-                {f.explainableReason}
-              </p>
             </div>
+          </div>
 
-            {f.aiExplanation && (
-              <div style={{ marginBottom: '8px' }}>
-                <div style={{ fontSize: '0.82rem', fontWeight: '700', color: '#4F46E5', marginBottom: '2px' }}>
-                  🤖 AI Root-Cause & Impact Analysis:
+          {/* SEVERITY BREAKDOWN PILLS */}
+          <div className="ds-grid ds-mb-lg" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '16px' }}>
+            <div className="ds-card" style={{ padding: '16px', background: 'var(--bg-secondary)', borderLeft: '4px solid var(--color-critical)', textAlign: 'center' }}>
+              <div style={{ color: 'var(--color-critical)', fontWeight: '700', fontSize: '24px' }}>{exec.severityBreakdown?.CRITICAL || 0}</div>
+              <div className="ds-heading-3" style={{ color: 'var(--color-critical)' }}>Critical Breaches</div>
+            </div>
+            <div className="ds-card" style={{ padding: '16px', background: 'var(--bg-secondary)', borderLeft: '4px solid var(--color-high)', textAlign: 'center' }}>
+              <div style={{ color: 'var(--color-high)', fontWeight: '700', fontSize: '24px' }}>{exec.severityBreakdown?.HIGH || 0}</div>
+              <div className="ds-heading-3" style={{ color: 'var(--color-high)' }}>High Risk</div>
+            </div>
+            <div className="ds-card" style={{ padding: '16px', background: 'var(--bg-secondary)', borderLeft: '4px solid var(--color-medium)', textAlign: 'center' }}>
+              <div style={{ color: 'var(--color-medium)', fontWeight: '700', fontSize: '24px' }}>{exec.severityBreakdown?.MEDIUM || 0}</div>
+              <div className="ds-heading-3" style={{ color: 'var(--color-medium)' }}>Medium Risk</div>
+            </div>
+            <div className="ds-card" style={{ padding: '16px', background: 'var(--bg-secondary)', borderLeft: '4px solid var(--color-low)', textAlign: 'center' }}>
+              <div style={{ color: 'var(--color-low)', fontWeight: '700', fontSize: '24px' }}>{exec.severityBreakdown?.LOW || 0}</div>
+              <div className="ds-heading-3" style={{ color: 'var(--color-low)' }}>Low Risk</div>
+            </div>
+          </div>
+
+          {/* 5-PILLAR TABLE */}
+          <h3 className="ds-heading-2 ds-mb-md">
+            1. Statutory 5-Pillar Compliance Assessment Matrix
+          </h3>
+          <div className="ds-table-wrapper ds-mb-lg">
+            <table className="ds-table">
+              <thead>
+                <tr>
+                  <th>Pillar / Statutory Control</th>
+                  <th>DPDPA Section</th>
+                  <th>Scope & Evidence Examined</th>
+                  <th>Pillar Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span className="ds-font-semibold">Pillar 1: Notice & Purpose Specification</span></td>
+                  <td><span className="ds-badge ds-badge-low">Sec 5 & 6</span></td>
+                  <td>Itemized notices, declared purpose limitation clauses, DPO contacts</td>
+                  <td><span className="ds-badge ds-badge-compliant">PASS (100%)</span></td>
+                </tr>
+                <tr>
+                  <td><span className="ds-font-semibold">Pillar 2: Data Principal Rights Center</span></td>
+                  <td><span className="ds-badge ds-badge-low">Sec 11-14</span></td>
+                  <td>Access (Sec 11), Erasure (Sec 12), Grievance (Sec 13), Nominee (Sec 14)</td>
+                  <td><span className="ds-badge ds-badge-compliant">PASS (100%)</span></td>
+                </tr>
+                <tr>
+                  <td><span className="ds-font-semibold">Pillar 3: Log Sanitization & Safeguards</span></td>
+                  <td><span className="ds-badge ds-badge-low">Sec 8(5)</span></td>
+                  <td>Prevention of plaintext personal identifiers (Email, Phone, PAN) in logs</td>
+                  <td><span className={`ds-badge ${exec.severityBreakdown?.CRITICAL > 0 ? 'ds-badge-critical' : 'ds-badge-medium'}`}>{exec.severityBreakdown?.CRITICAL > 0 ? 'FAIL (CRITICAL)' : 'ATTENTION (50%)'}</span></td>
+                </tr>
+                <tr>
+                  <td><span className="ds-font-semibold">Pillar 4: Purpose Limitation & Use Scope</span></td>
+                  <td><span className="ds-badge ds-badge-low">Sec 6(1)</span></td>
+                  <td>Restricting data processing exclusively to declared collection scope</td>
+                  <td><span className="ds-badge ds-badge-medium">ATTENTION (75%)</span></td>
+                </tr>
+                <tr>
+                  <td><span className="ds-font-semibold">Pillar 5: Consent Lifecycle & Retention</span></td>
+                  <td><span className="ds-badge ds-badge-low">Sec 6(4) & 8(7)</span></td>
+                  <td>Ceasing processing upon consent withdrawal & purging expired telemetry</td>
+                  <td><span className="ds-badge ds-badge-medium">ATTENTION (50%)</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* ITEMIZED FINDINGS */}
+          <h3 className="ds-heading-2 ds-mb-md">
+            2. Detailed Statutory Findings, Breach Reasons & Prescribed Solutions
+          </h3>
+
+          {findings.map((f, i) => (
+            <div key={i} className="ds-card ds-mb-md" style={{ padding: '24px' }}>
+              <div className="ds-flex-between ds-mb-md">
+                <div className="ds-flex ds-items-center ds-gap-sm">
+                  <h4 className="ds-heading-2" style={{ fontSize: '16px', margin: 0 }}>
+                    Finding #{i + 1}: {f.title}
+                  </h4>
+                  {f.observedEvidence?.occurrences > 1 && (
+                    <span className="ds-badge ds-badge-neutral">
+                      {f.observedEvidence.occurrences}x occurrences
+                    </span>
+                  )}
                 </div>
-                <p style={{ margin: 0, fontSize: '0.85rem', color: '#334155', lineHeight: '1.5' }}>
-                  {f.aiExplanation}
+                <span className={`ds-badge ds-badge-${f.severity.toLowerCase()}`}>
+                  {f.severity} (Risk: {f.riskScore}/100)
+                </span>
+              </div>
+
+              <div className="ds-text-small ds-text-secondary ds-mb-md" style={{ background: 'var(--bg-primary)', padding: '12px', borderRadius: 'var(--radius-sm)' }}>
+                <span className="ds-font-semibold">Observed Telemetry:</span> Endpoint: <code style={{ background: 'var(--border-light)', padding: '2px 4px', borderRadius: '2px' }}>{f.observedEvidence?.endpoint || '/api'}</code> | Source: <span className="ds-font-semibold">{f.observedEvidence?.source}</span> | PII Detected: <span className="ds-font-semibold">{(f.observedEvidence?.detectedData || []).join(', ')}</span>
+              </div>
+
+              <div className="ds-mb-md">
+                <div className="ds-heading-3 ds-mb-sm" style={{ color: 'var(--color-high)' }}>
+                  Reason for Data Breach & Non-Compliance
+                </div>
+                <p className="ds-text-body">
+                  {f.explainableReason}
                 </p>
               </div>
-            )}
 
-            <div>
-              <div style={{ fontSize: '0.82rem', fontWeight: '700', color: '#166534', marginBottom: '2px' }}>
-                ✅ Prescribed Remediation & Solution:
+              {f.aiExplanation && (
+                <div className="ds-mb-md">
+                  <div className="ds-heading-3 ds-mb-sm" style={{ color: 'var(--text-primary)' }}>
+                    AI Root-Cause & Impact Analysis
+                  </div>
+                  <p className="ds-text-body">
+                    {f.aiExplanation}
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <div className="ds-heading-3 ds-mb-sm" style={{ color: 'var(--color-compliant)' }}>
+                  Prescribed Remediation & Solution
+                </div>
+                <p className="ds-text-body">
+                  {f.remediationGuidance}
+                </p>
               </div>
-              <p style={{ margin: 0, fontSize: '0.85rem', color: '#334155', lineHeight: '1.5' }}>
-                {f.remediationGuidance}
-              </p>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
 
         {/* MODAL FOOTER */}
-        <div style={{ marginTop: '1.5rem', textAlign: 'right', borderTop: '1px solid #E2E8F0', paddingTop: '1rem' }}>
-          <button className="btn btn-primary" onClick={handleDownloadPDF} style={{ marginRight: '8px' }}>
-            📥 Download Official PDF Document
+        <div className="ds-modal-footer">
+          <button className="ds-btn ds-btn-primary" onClick={handleDownloadPDF}>
+            Download Official PDF Document
           </button>
-          <button className="btn btn-secondary" onClick={onClose}>
+          <button className="ds-btn ds-btn-secondary" onClick={onClose}>
             Close Preview
           </button>
         </div>

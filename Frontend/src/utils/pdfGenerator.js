@@ -292,7 +292,7 @@ export function generateAuditReportPDF(reportData) {
     doc.setTextColor(...CRITICAL);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
-    doc.text('🚨 Reason for Data Breach & Non-Compliance:', margin + 3, y);
+    doc.text('REASON FOR DATA BREACH & NON-COMPLIANCE:', margin + 3, y);
     y += 3.5;
 
     doc.setTextColor(...TEXT_DARK);
@@ -310,7 +310,7 @@ export function generateAuditReportPDF(reportData) {
       doc.setTextColor(...PRIMARY);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(7.5);
-      doc.text('🤖 AI Root-Cause & Impact Analysis:', margin + 3, y);
+      doc.text('AI ROOT-CAUSE & IMPACT ANALYSIS:', margin + 3, y);
       y += 3.5;
 
       doc.setTextColor(...TEXT_DARK);
@@ -325,7 +325,7 @@ export function generateAuditReportPDF(reportData) {
     doc.setTextColor(...LOW);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
-    doc.text('✅ Prescribed Remediation & Engineering Solution:', margin + 3, y);
+    doc.text('PRESCRIBED REMEDIATION & ENGINEERING SOLUTION:', margin + 3, y);
     y += 3.5;
 
     doc.setTextColor(...TEXT_DARK);

@@ -4,27 +4,25 @@ import { useAuth } from "../context/AuthContext";
 import { io } from "socket.io-client";
 import axios from "axios";
 import AuditReportModal from "../components/AuditReportModal";
+import ViolationModal from "../components/ViolationModal";
 import { generateAuditReportPDF } from "../utils/pdfGenerator";
 
 const API = "http://localhost:5000";
 
-const SEV_COLOR = { HIGH: "#C43232", MEDIUM: "#B54708", LOW: "#18794E", CRITICAL: "#5B21B6" };
-const SEV_BG    = { HIGH: "#FDECEC", MEDIUM: "#FFF4E5", LOW: "#E8F5EE", CRITICAL: "#EDE9FE" };
+// Kept for backward compatibility in modals
+const SEV_COLOR = { HIGH: "var(--color-high)", MEDIUM: "var(--color-medium)", LOW: "var(--color-low)", CRITICAL: "var(--color-critical)" };
+const SEV_BG    = { HIGH: "var(--bg-high)", MEDIUM: "var(--bg-medium)", LOW: "var(--bg-low)", CRITICAL: "var(--bg-critical)" };
 
 function ComplianceRing({ score }) {
-  const r = 48, circ = 2 * Math.PI * r;
+  const r = 24, circ = 2 * Math.PI * r;
   const offset = circ - (score / 100) * circ;
-  const color = score >= 80 ? "#18794E" : score >= 50 ? "#B54708" : "#C43232";
+  const color = score >= 80 ? "var(--color-compliant)" : score >= 50 ? "var(--color-medium)" : "var(--color-high)";
   return (
-    <svg width="120" height="120" viewBox="0 0 120 120" style={{ flexShrink: 0 }}>
-      <circle cx="60" cy="60" r={r} fill="none" stroke="#EAE7DF" strokeWidth="10" />
-      <circle cx="60" cy="60" r={r} fill="none" stroke={color} strokeWidth="10"
+    <svg width="56" height="56" viewBox="0 0 56 56" style={{ flexShrink: 0 }}>
+      <circle cx="28" cy="28" r={r} fill="none" stroke="var(--border-medium)" strokeWidth="6" />
+      <circle cx="28" cy="28" r={r} fill="none" stroke={color} strokeWidth="6"
         strokeDasharray={circ} strokeDashoffset={offset}
-        strokeLinecap="round" transform="rotate(-90 60 60)" />
-      <text x="60" y="56" textAnchor="middle" fontSize="20" fontWeight="700" fill={color}
-        fontFamily="Inter,sans-serif">{score}%</text>
-      <text x="60" y="72" textAnchor="middle" fontSize="10" fill="#98A2B3"
-        fontFamily="Inter,sans-serif">score</text>
+        strokeLinecap="round" transform="rotate(-90 28 28)" />
     </svg>
   );
 }
@@ -157,283 +155,248 @@ export default function Dashboard() {
   const handleLogout = () => { logout(); navigate("/login"); };
 
   const filtered = violations.filter(v => filter === "ALL" || v.severity === filter);
-
-  const greeting = () => {
-    const h = new Date().getHours();
-    if (h < 12) return "Good morning";
-    if (h < 17) return "Good afternoon";
-    return "Good evening";
-  };
-
   const initials = user?.username?.slice(0, 2).toUpperCase() || "PG";
 
   return (
-    <div className="pg-layout">
-      {/* SIDEBAR */}
-      <aside className="pg-sidebar">
-        <div className="pg-sidebar-logo">
-          <div className="pg-sidebar-logo-mark">◇</div>
-          <span className="pg-sidebar-logo-name">PrivGuard</span>
+    <div className="ds-layout">
+      {/* LEFT SIDEBAR */}
+      <aside className="ds-sidebar" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+        <div className="sidebar-logo ds-flex-between">
+          PrivGuard
+          <label htmlFor="mobile-menu-toggle" className="mobile-menu-label" style={{ cursor: 'pointer', fontSize: '20px' }}>≡</label>
+        </div>
+        <input type="checkbox" id="mobile-menu-toggle" />
+
+        <div className="sidebar-nav-container" style={{ flex: 1, overflowY: 'auto', paddingTop: '16px' }}>
+          <div className="sidebar-nav-item active">Dashboard</div>
+          <div className="sidebar-nav-item" onClick={() => navigate("/live-monitor")}>Live Monitor</div>
+          <div className="sidebar-nav-item" onClick={() => navigate("/violations")}>Violations</div>
+          <div className="sidebar-nav-item" onClick={() => navigate("/policies")}>Policies</div>
+          <div className="sidebar-nav-item" onClick={() => navigate("/audit-trail")}>Audit Trail</div>
+          <div className="sidebar-nav-item" onClick={() => navigate('/settings')} tabIndex={0} onKeyDown={(e) => { if(e.key==='Enter') navigate('/settings'); }}>Settings</div>
         </div>
 
-        <div className="pg-nav-section">
-          <div className="pg-nav-section-label">Overview</div>
-          <div className="pg-nav-item active"><span className="pg-nav-icon">⊞</span> Dashboard</div>
-          <div className="pg-nav-item"><span className="pg-nav-icon">⚡</span> Live Monitor</div>
-        </div>
-
-        <div className="pg-nav-section">
-          <div className="pg-nav-section-label">Compliance</div>
-          <div className="pg-nav-item"><span className="pg-nav-icon">🚨</span> Violations</div>
-          <div className="pg-nav-item"><span className="pg-nav-icon">📋</span> Policies</div>
-        </div>
-
-        <div className="pg-nav-section">
-          <div className="pg-nav-section-label">Governance</div>
-          <div className="pg-nav-item"><span className="pg-nav-icon">📁</span> Audit Trail</div>
-        </div>
-
-        <div className="pg-nav-section">
-          <div className="pg-nav-section-label">System</div>
-          <div className="pg-nav-item"><span className="pg-nav-icon">⚙</span> Settings</div>
-        </div>
-
-        <div className="pg-sidebar-footer">
-          <div className="pg-monitor-badge">
-            <div className="pg-monitor-dot" />
-            Monitoring Active
+        {/* BOTTOM SIDEBAR */}
+        <div className="sidebar-bottom" style={{ padding: '16px', borderTop: '1px solid var(--border-medium)', background: 'var(--bg-primary)' }}>
+          <div className="ds-flex-between ds-items-center">
+            <div className="ds-flex ds-items-center ds-gap-sm ds-text-small ds-font-semibold">
+              <div style={{ width: 24, height: 24, borderRadius: 12, background: 'var(--border-medium)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px' }}>
+                {initials}
+              </div>
+              {user?.username}
+            </div>
+            <button className="ds-btn ds-btn-ghost" style={{ padding: '4px 8px', height: 'auto', fontSize: '12px' }} onClick={handleLogout}>
+              Sign out
+            </button>
           </div>
         </div>
       </aside>
 
-      {/* MAIN */}
-      <div className="pg-main">
-        {/* TOPBAR */}
-        <header className="pg-topbar">
-          <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
-            Privacy Compliance Dashboard
-          </span>
-          <div className="pg-topbar-right">
-            <div className="pg-topbar-user">
-              <div className="pg-avatar">{initials}</div>
-              <span>{user?.username}</span>
-            </div>
-            <button className="btn btn-secondary" onClick={handleLogout}>Sign out</button>
+      {/* MAIN CONTENT */}
+      <div className="ds-main">
+        {/* TOP BAR */}
+        <header className="ds-header">
+          <div className="ds-text-small ds-text-muted ds-font-medium">
+            PrivGuard / <span style={{ color: 'var(--text-primary)' }}>Privacy Compliance</span>
           </div>
         </header>
 
-        <div className="pg-content">
-          {/* PAGE HEADER */}
-          <div className="pg-page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+        <div className="ds-content">
+          {/* 1. PAGE HEADER */}
+          <div className="ds-flex-between ds-mb-lg" style={{ flexWrap: "wrap", gap: "24px", alignItems: "flex-end" }}>
             <div>
-              <div className="pg-page-title">{greeting()}, {user?.username}.</div>
-              <div className="pg-page-sub">Autonomous DPDPA Compliance Monitoring & Statutory Enforcement Engine.</div>
-              <div className="pg-last-updated">
-                <div className="pg-monitor-dot" style={{ width: 6, height: 6, background: "#18794E", borderRadius: "50%", animation: "pulse 2s infinite" }} />
-                Last updated {timeAgo(lastUpdated)}
-              </div>
+              <h1 className="ds-heading-1">Privacy Compliance</h1>
+              <p className="ds-text-body">Continuous monitoring of personal-data processing and DPDPA policy violations.</p>
             </div>
 
-            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-              <button
-                className="btn btn-primary"
-                onClick={runScan}
-                disabled={scanning}
-                style={{ padding: "10px 18px", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "6px" }}
-              >
-                {scanning ? "🔍 Scanning Target..." : "⚡ Run Live DPDPA Scan"}
+            <div className="ds-flex ds-gap-sm" style={{ flexWrap: "wrap" }}>
+              <button className="ds-btn ds-btn-ghost" onClick={clearData} disabled={clearing} style={{ color: 'var(--text-tertiary)' }}>
+                {clearing ? "Clearing..." : "Reset Data"}
               </button>
-              <button
-                className="btn btn-secondary"
-                onClick={downloadPDFDirectly}
-                disabled={generatingPDF}
-                style={{ padding: "10px 18px", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "6px", background: "#EEF2FF", color: "#4F46E5", borderColor: "#C7D2FE", fontWeight: "600" }}
-              >
-                {generatingPDF ? "⏳ Generating PDF..." : "📥 Download Audit PDF"}
+              <button className="ds-btn ds-btn-ghost" onClick={exportReport}>
+                View Audit Report
               </button>
-              <button
-                className="btn btn-secondary"
-                onClick={exportReport}
-                style={{ padding: "10px 18px", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "6px" }}
-              >
-                📄 View Audit Report
+              <button className="ds-btn ds-btn-ghost" onClick={downloadPDFDirectly} disabled={generatingPDF}>
+                {generatingPDF ? "Generating PDF..." : "Download Audit PDF"}
               </button>
-              <button
-                className="btn btn-secondary"
-                onClick={clearData}
-                disabled={clearing}
-                style={{ padding: "10px 18px", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "6px", color: "var(--danger)", borderColor: "#FCA5A5" }}
-              >
-                {clearing ? "Clearing..." : "🗑 Reset Data"}
+              <button className="ds-btn ds-btn-primary" onClick={runScan} disabled={scanning}>
+                {scanning ? "Scanning Target..." : "Run Live DPDPA Scan"}
               </button>
             </div>
           </div>
 
           {scanResult && (
-            <div style={{
-              background: "#F0FDF4", border: "1px solid #BBF7D0", color: "#166534",
-              padding: "12px 18px", borderRadius: "10px", marginBottom: "1.5rem",
-              display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.9rem"
-            }}>
+            <div className="ds-alert ds-alert-info ds-mb-lg ds-flex-between" style={{ background: 'var(--bg-secondary)', borderLeft: '4px solid var(--color-compliant)', color: 'var(--text-primary)' }}>
               <div>
-                <b>✓ Autonomous DPDPA Audit Completed:</b> Scanned {scanResult.scannedLogs} logs & {scanResult.scannedEvents} events on target application. Identified <b>{scanResult.violationsDetected}</b> compliance discrepancies.
+                <span className="ds-font-semibold" style={{ color: 'var(--color-compliant)', marginRight: 8 }}>Audit Completed:</span>
+                Scanned {scanResult.scannedLogs} logs & {scanResult.scannedEvents} events. Identified <span className="ds-font-semibold">{scanResult.violationsDetected}</span> compliance discrepancies.
               </div>
-              <span style={{ fontWeight: "700", background: "#DCFCE7", padding: "4px 10px", borderRadius: "6px" }}>
+              <span className="ds-badge ds-badge-compliant">
                 Score: {scanResult.complianceScore}%
               </span>
             </div>
           )}
 
-          {/* COMPLIANCE + METRICS */}
-          <div className="pg-compliance-card">
-            <ComplianceRing score={stats.complianceScore} />
-            <div className="pg-compliance-text">
-              <div className="pg-compliance-label">Privacy Posture</div>
-              <div style={{ fontSize: 36, fontWeight: 700, color: "var(--text-head)", lineHeight: 1 }}>
-                {stats.complianceScore}%
-              </div>
-              <div className="pg-compliance-delta">
-                {stats.open === 0 ? "✓ No open violations" : `${stats.open} open violation${stats.open > 1 ? "s" : ""} affecting score`}
-              </div>
-            </div>
-          </div>
-
-          <div className="pg-metrics">
-            <div className="pg-metric-card">
-              <div className="pg-metric-label">Events Today</div>
-              <div className="pg-metric-value">{stats.totalEvents.toLocaleString()}</div>
-              <div className="pg-metric-delta delta-up">↑ Monitored</div>
-            </div>
-            <div className="pg-metric-card">
-              <div className="pg-metric-label">Violations</div>
-              <div className="pg-metric-value">{stats.total}</div>
-              <div className="pg-metric-delta delta-warn">{stats.open} open</div>
-            </div>
-            <div className="pg-metric-card">
-              <div className="pg-metric-label">High Risk</div>
-              <div className="pg-metric-value" style={{ color: "var(--danger)" }}>{stats.high}</div>
-              <div className="pg-metric-delta delta-down">{stats.high > 0 ? "Needs attention" : "✓ Clear"}</div>
-            </div>
-            <div className="pg-metric-card">
-              <div className="pg-metric-label">Medium Risk</div>
-              <div className="pg-metric-value" style={{ color: "var(--warn)" }}>{stats.medium}</div>
-              <div className="pg-metric-delta delta-warn">{stats.medium > 0 ? "Review recommended" : "✓ Clear"}</div>
-            </div>
-          </div>
-
-          {/* PANELS */}
-          <div className="pg-panels">
-            {/* LIVE ACTIVITY */}
-            <div className="pg-panel">
-              <div className="pg-panel-header">
-                <span className="pg-panel-title">Live Activity</span>
-                <span style={{ fontSize: 11, color: "var(--success)", fontWeight: 500 }}>● Live</span>
-              </div>
-              <div className="live-feed">
-                {liveEvents.length === 0 && <div className="live-empty">Waiting for events…</div>}
-                {liveEvents.map((e, i) => (
-                  <div key={i} className={`live-item live-${e.tag}`}>
-                    <div className="live-dot" style={{ background: e.tag === "violation" ? "var(--danger)" : "var(--indigo)" }} />
-                    <span className="live-time">{e.time}</span>
-                    <span className="live-msg">{e.msg}</span>
+          <div className="ds-grid ds-mb-lg" style={{ gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+            {/* 2. PRIVACY POSTURE (Strong horizontal summary) */}
+            <div className="ds-card" style={{ padding: '24px', display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: '24px' }}>
+              <ComplianceRing score={stats.complianceScore} />
+              <div>
+                <div className="ds-heading-3 ds-text-muted ds-mb-sm">Privacy Posture</div>
+                <div className="ds-flex ds-items-center ds-gap-md">
+                  <div style={{ fontSize: 32, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1 }}>
+                    {stats.complianceScore}%
                   </div>
-                ))}
+                  <div className="ds-text-small ds-text-secondary" style={{ borderLeft: '1px solid var(--border-medium)', paddingLeft: '16px' }}>
+                    {stats.open === 0 
+                      ? "No open findings affecting score" 
+                      : <><span className="ds-font-semibold" style={{ color: 'var(--color-medium)' }}>{stats.open} open findings</span> affecting score</>
+                    }
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* VIOLATIONS */}
-            <div className="pg-panel">
-              <div className="pg-panel-header">
-                <span className="pg-panel-title">Recent Violations</span>
-                <select value={filter} onChange={e => setFilter(e.target.value)} className="filter-select">
-                  <option value="ALL">All</option>
-                  <option value="CRITICAL">Critical</option>
-                  <option value="HIGH">High</option>
-                  <option value="MEDIUM">Medium</option>
-                  <option value="LOW">Low</option>
-                </select>
+            {/* 3. RISK OVERVIEW (Clean risk summary) */}
+            <div className="ds-card" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)' }}>
+              <div style={{ padding: '24px', borderRight: '1px solid var(--border-medium)', textAlign: 'center' }}>
+                <div className="ds-heading-3 ds-text-muted ds-mb-sm">Critical</div>
+                <div style={{ fontSize: 32, fontWeight: 700, color: 'var(--color-critical)' }}>{stats.critical}</div>
               </div>
-              <div className="violations-list">
-                {filtered.length === 0 && (
-                  <div className="live-empty">{filter === "ALL" ? "No violations yet." : `No ${filter} violations.`}</div>
-                )}
-                {filtered.map((v) => (
-                  <div key={v._id || v.violationId} className="v-row" onClick={() => setSelected(v)}>
-                    <div className="v-dot" style={{ background: SEV_COLOR[v.severity] || "#98A2B3" }} />
-                    <div className="v-body">
-                      <div className="v-title">
-                        {v.title || v.type.replace(/_/g, " ")}
-                        {v.occurrences > 1 && (
-                          <span style={{ marginLeft: 6, fontSize: 10, background: "#FEF08A", color: "#854D0E", padding: "1px 6px", borderRadius: 4, fontWeight: 700 }}>
-                            {v.occurrences}x
-                          </span>
-                        )}
+              <div style={{ padding: '24px', borderRight: '1px solid var(--border-medium)', textAlign: 'center' }}>
+                <div className="ds-heading-3 ds-text-muted ds-mb-sm">High</div>
+                <div style={{ fontSize: 32, fontWeight: 700, color: 'var(--color-high)' }}>{stats.high}</div>
+              </div>
+              <div style={{ padding: '24px', borderRight: '1px solid var(--border-medium)', textAlign: 'center' }}>
+                <div className="ds-heading-3 ds-text-muted ds-mb-sm">Medium</div>
+                <div style={{ fontSize: 32, fontWeight: 700, color: 'var(--color-medium)' }}>{stats.medium}</div>
+              </div>
+              <div style={{ padding: '24px', textAlign: 'center' }}>
+                <div className="ds-heading-3 ds-text-muted ds-mb-sm">Low</div>
+                <div style={{ fontSize: 32, fontWeight: 700, color: 'var(--color-low)' }}>{stats.low}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* 5. RECENT VIOLATIONS (Enterprise Table) */}
+          <div className="ds-card ds-mb-lg">
+            <div className="ds-card-header">
+              <span className="ds-heading-2" style={{ fontSize: 16 }}>Recent Violations</span>
+              <select value={filter} onChange={e => setFilter(e.target.value)} className="ds-input" style={{ width: 'auto', height: 32, fontSize: 12 }}>
+                <option value="ALL">All Severities</option>
+                <option value="CRITICAL">Critical</option>
+                <option value="HIGH">High</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="LOW">Low</option>
+              </select>
+            </div>
+            
+            {filtered.length === 0 ? (
+              <div style={{ padding: '48px 24px', textAlign: 'center' }}>
+                <div className="ds-heading-3 ds-text-muted ds-mb-sm">No compliance findings</div>
+                <div className="ds-text-body ds-text-secondary">No violations match the current filters.</div>
+              </div>
+            ) : (
+              <div className="ds-table-wrapper" style={{ border: 'none' }}>
+                <table className="ds-table">
+                  <thead>
+                    <tr>
+                      <th>Finding</th>
+                      <th>Type</th>
+                      <th>Source</th>
+                      <th>Severity</th>
+                      <th>Risk</th>
+                      <th>Status</th>
+                      <th>Time</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((v) => (
+                      <tr key={v._id || v.violationId} onClick={() => setSelected(v)} style={{ cursor: 'pointer' }} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') setSelected(v); }}>
+                        <td style={{ fontWeight: 500, color: 'var(--text-primary)' }}>
+                          {v.title || v.type.replace(/_/g, " ")}
+                          {v.occurrences > 1 && (
+                            <span className="ds-badge ds-badge-neutral" style={{ marginLeft: 8 }}>{v.occurrences}x</span>
+                          )}
+                        </td>
+                        <td>{v.type}</td>
+                        <td><code style={{ background: 'var(--bg-tertiary)', padding: '2px 6px', borderRadius: '4px', fontSize: '11px' }}>{v.endpoint || v.service}</code></td>
+                        <td><span className={`ds-badge ds-badge-${v.severity.toLowerCase()}`}>{v.severity}</span></td>
+                        <td>{v.riskScore}</td>
+                        <td>{v.status}</td>
+                        <td style={{ whiteSpace: 'nowrap' }}>{timeAgo(v.timestamp)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* 4. LIVE ACTIVITY (Professional timeline) */}
+          <div className="ds-card">
+            <div className="ds-card-header">
+              <span className="ds-heading-2" style={{ fontSize: 16 }}>Live Activity Stream</span>
+            </div>
+            
+            <div className="ds-card-body">
+              {liveEvents.length === 0 ? (
+                <div style={{ padding: '48px 24px', textAlign: 'center' }}>
+                  <div className="ds-heading-3 ds-text-muted ds-mb-sm">No recent activity</div>
+                  <div className="ds-text-body ds-text-secondary">Monitoring is active and waiting for incoming telemetry.</div>
+                </div>
+              ) : (
+                <div style={{ position: 'relative', paddingLeft: '16px' }}>
+                  {/* Timeline vertical line */}
+                  <div style={{ position: 'absolute', left: '7px', top: '12px', bottom: '24px', width: '2px', background: 'var(--border-medium)' }} />
+                  
+                  {liveEvents.map((e, i) => {
+                    let title = e.msg;
+                    let sub = "";
+                    let dotColor = 'var(--border-dark)'; // default for events
+                    
+                    if (e.tag === 'violation' && e.msg.includes('—')) {
+                      [sub, title] = e.msg.split('—').map(s => s.trim());
+                      // Extract severity if present (e.g. "PII EXPOSED (HIGH)")
+                      const sevMatch = title.match(/\((CRITICAL|HIGH|MEDIUM|LOW)\)$/);
+                      if (sevMatch) {
+                        const sev = sevMatch[1].toLowerCase();
+                        dotColor = `var(--color-${sev})`;
+                        title = title.replace(/\s*\(.*?\)$/, ''); // remove (HIGH) from title
+                      } else {
+                        dotColor = 'var(--color-high)'; // fallback
+                      }
+                    } else if (e.tag === 'event' && e.msg.includes('·')) {
+                      [title, sub] = e.msg.split('·').map(s => s.trim());
+                    }
+                    
+                    return (
+                      <div key={i} style={{ position: 'relative', paddingBottom: '24px', display: 'flex', gap: '16px' }}>
+                        {/* Timeline dot */}
+                        <div style={{ position: 'absolute', left: '-13px', top: '4px', width: '10px', height: '10px', borderRadius: '50%', background: dotColor, border: '2px solid var(--bg-secondary)' }} />
+                        
+                        <div style={{ width: '80px', flexShrink: 0, fontSize: '11px', color: 'var(--text-tertiary)', fontFamily: 'monospace', paddingTop: '2px' }}>
+                          {e.time}
+                        </div>
+                        
+                        <div>
+                          <div className="ds-text-body ds-font-medium" style={{ color: e.tag === 'violation' ? dotColor : 'var(--text-primary)' }}>
+                            {title}
+                          </div>
+                          {sub && <div className="ds-text-small ds-text-secondary" style={{ marginTop: '2px' }}>{sub}</div>}
+                        </div>
                       </div>
-                      <div className="v-sub">{v.endpoint || v.service} · {v.detectedPII?.join(", ")}</div>
-                    </div>
-                    <span className="v-badge" style={{ background: SEV_COLOR[v.severity], color: "white" }}>
-                      {v.severity}
-                    </span>
-                    <span className="v-time">{timeAgo(v.timestamp)}</span>
-                  </div>
-                ))}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
 
       {/* VIOLATION DETAIL MODAL */}
-      {selected && (
-        <div className="modal-overlay" onClick={() => setSelected(null)}>
-          <div className="modal-card" onClick={e => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setSelected(null)}>✕</button>
-
-            <div className="modal-header">
-              <div style={{
-                width: 44, height: 44, borderRadius: 12, flexShrink: 0,
-                background: SEV_BG[selected.severity] || "#f3f4f6",
-                display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20,
-              }}>
-                {selected.severity === "HIGH" ? "🔴" : selected.severity === "CRITICAL" ? "🟣" : selected.severity === "MEDIUM" ? "🟡" : "🟢"}
-              </div>
-              <div>
-                <div className="modal-title">{selected.title || selected.type.replace(/_/g, " ")}</div>
-                <div className="modal-sub">
-                  <span className="v-badge" style={{ background: SEV_COLOR[selected.severity] }}>{selected.severity}</span>
-                  Risk Score: <b>{selected.riskScore}</b>
-                </div>
-              </div>
-            </div>
-
-            <div className="modal-grid">
-              <div className="modal-field"><span>Endpoint</span><b>{selected.endpoint || "—"}</b></div>
-              <div className="modal-field"><span>Service</span><b>{selected.service || "—"}</b></div>
-              <div className="modal-field"><span>Detected PII</span><b>{selected.detectedPII?.join(", ") || "—"}</b></div>
-              <div className="modal-field"><span>Status</span><b>{selected.status}</b></div>
-              <div className="modal-field"><span>Policy Rule</span><b>{selected.policy?.rule || "—"}</b></div>
-              <div className="modal-field"><span>Detected At</span><b>{new Date(selected.timestamp).toLocaleString()}</b></div>
-            </div>
-
-            {selected.reason && (
-              <div className="modal-section">
-                <div className="modal-section-title">⚖️ Statutory Reason</div>
-                <p>{selected.reason}</p>
-              </div>
-            )}
-
-            <div className="modal-section">
-              <div className="modal-section-title">🤖 AI Explanation</div>
-              <p>{selected.explanation || selected.aiExplanation || "No explanation provided."}</p>
-            </div>
-
-            <div className="modal-section">
-              <div className="modal-section-title">✅ Recommended Fix</div>
-              <p>{selected.recommendation || "No recommendation provided."}</p>
-            </div>
-          </div>
-        </div>
-      )}
+      <ViolationModal selected={selected} onClose={() => setSelected(null)} />
 
       {/* AUDIT REPORT PREVIEW & PRINT MODAL */}
       {reportModal && (

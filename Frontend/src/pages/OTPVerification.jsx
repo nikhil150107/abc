@@ -74,62 +74,61 @@ export default function OTPVerification() {
   const fmt = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
   return (
-    <div className="auth-container">
-      <div className="auth-logo">
-        <div className="auth-logo-mark">◇</div>
-        <span className="auth-logo-name">PrivGuard</span>
+    <div className="ds-auth-layout">
+      <div className="ds-mb-lg" style={{ fontSize: '24px', fontWeight: '700', letterSpacing: '0.05em' }}>
+        PrivGuard
       </div>
 
-      <div className="auth-card">
+      <div className="ds-card auth-card-wrapper ds-card-body">
         {verified ? (
-          <div className="auth-success">
-            <div className="success-icon">✓</div>
-            <div className="success-title">Email verified</div>
-            <p className="success-sub">Your workspace is ready. Redirecting to sign in…</p>
+          <div className="ds-text-center">
+            <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--bg-compliant)', color: 'var(--color-compliant)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 24, fontWeight: '700' }}>✓</div>
+            <h1 className="ds-heading-2 ds-mb-sm">Email verified</h1>
+            <p className="ds-text-body">Your workspace is ready. Redirecting to sign in…</p>
           </div>
         ) : (
           <>
-            <h1 className="auth-heading" style={{ fontSize: 28 }}>Verify your email</h1>
-            <p className="auth-subtitle">We sent a 6-digit code to your email address.</p>
+            <h1 className="ds-heading-1 ds-mb-sm">Verify your email</h1>
+            <p className="ds-text-body ds-mb-lg">We sent a 6-digit code to your email address.</p>
 
-            {error && <div className="alert alert-error">{error}</div>}
+            {error && <div className="ds-alert ds-alert-error ds-mb-md">{error}</div>}
 
-            <div className="form-group">
-              <label>Email</label>
-              <input type="email" placeholder="name@company.com"
+            <div className="ds-form-group">
+              <label className="ds-label">Email</label>
+              <input className="ds-input" type="email" placeholder="name@company.com"
                 value={email} onChange={e => setEmail(e.target.value)} required />
             </div>
 
-            <p className="otp-email-hint">Enter the code below</p>
+            <p className="ds-text-small ds-font-medium ds-mb-sm">Enter the code below</p>
 
             <form onSubmit={handleVerify}>
-              <div className="otp-boxes" onPaste={handlePaste}>
+              <div className="ds-flex ds-gap-sm ds-mb-lg" onPaste={handlePaste} style={{ justifyContent: 'space-between' }}>
                 {digits.map((d, i) => (
                   <input key={i} ref={el => inputRefs.current[i] = el}
-                    className="otp-box" type="text" inputMode="numeric"
+                    className="ds-input" style={{ width: '40px', height: '48px', textAlign: 'center', fontSize: '18px', fontWeight: '600', padding: 0 }} type="text" inputMode="numeric"
                     maxLength={1} value={d}
                     onChange={e => handleDigit(i, e.target.value)}
                     onKeyDown={e => handleKeyDown(i, e)} />
                 ))}
               </div>
 
-              <button type="submit" className="btn btn-primary" disabled={loading}>
+              <button type="submit" className="ds-btn ds-btn-primary" style={{ width: '100%' }} disabled={loading}>
                 {loading ? "Verifying…" : "Verify"}
               </button>
             </form>
 
-            <div className="otp-resend">
+            <div className="ds-mt-md ds-text-center ds-text-small ds-text-secondary">
               {canResend ? (
-                <button className="btn-link" onClick={handleResend} disabled={loading}>
+                <button onClick={handleResend} disabled={loading} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', fontWeight: '600', cursor: 'pointer' }}>
                   Resend code
                 </button>
               ) : (
-                <>Resend code in <b>{fmt(countdown)}</b></>
+                <>Resend code in <span className="ds-font-semibold">{fmt(countdown)}</span></>
               )}
             </div>
 
-            <div className="auth-links">
-              <p><Link to="/register">← Back to sign up</Link></p>
+            <div className="ds-mt-lg ds-text-center ds-text-small ds-text-secondary">
+              <Link to="/register" style={{ color: 'var(--text-primary)' }}>← Back to sign up</Link>
             </div>
           </>
         )}

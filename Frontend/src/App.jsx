@@ -7,6 +7,11 @@ import OTPVerification from "./pages/OTPVerification";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
+import LiveMonitor from "./pages/LiveMonitor";
+import Policies from "./pages/Policies";
+import Violations from "./pages/Violations";
+import AuditTrail from "./pages/AuditTrail";
+import Settings from "./pages/Settings";
 import "./App.css";
 
 function ProtectedRoute({ children }) {
@@ -29,6 +34,46 @@ function App() {
             element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/live-monitor"
+            element={
+              <ProtectedRoute>
+                <LiveMonitor />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/policies"
+            element={
+              <ProtectedRoute>
+                <Policies />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/audit-trail"
+            element={
+              <ProtectedRoute>
+                <AuditTrail />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/violations"
+            element={
+              <ProtectedRoute>
+                <Violations />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <Settings />
               </ProtectedRoute>
             }
           />

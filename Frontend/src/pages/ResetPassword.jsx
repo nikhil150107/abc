@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { apiRequest } from "../api/api";
 
-function ResetPassword() {
+export default function ResetPassword() {
   const [formData, setFormData] = useState({ email: "", otp: "", newPassword: "" });
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -30,16 +30,23 @@ function ResetPassword() {
   };
 
   return (
-    <div className="auth-container">
-      <div className="auth-card">
-        <h2>Reset Password</h2>
-        <p className="auth-subtitle">Enter the OTP and your new password</p>
-        {error && <div className="alert alert-error">{error}</div>}
-        {message && <div className="alert alert-success">{message}</div>}
+    <div className="ds-auth-layout">
+      <div className="ds-mb-lg" style={{ fontSize: '24px', fontWeight: '700', letterSpacing: '0.05em' }}>
+        PrivGuard
+      </div>
+
+      <div className="ds-card auth-card-wrapper ds-card-body">
+        <h2 className="ds-heading-1 ds-mb-sm">Reset Password</h2>
+        <p className="ds-text-body ds-mb-lg">Enter the OTP and your new password</p>
+        
+        {error && <div className="ds-alert ds-alert-error ds-mb-md">{error}</div>}
+        {message && <div className="ds-alert ds-alert-info ds-mb-md" style={{ background: 'var(--bg-secondary)', color: 'var(--color-compliant)', borderLeft: '4px solid var(--color-compliant)' }}>{message}</div>}
+        
         <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>Email</label>
+          <div className="ds-form-group">
+            <label className="ds-label">Email</label>
             <input
+              className="ds-input"
               type="email"
               name="email"
               value={formData.email}
@@ -48,9 +55,10 @@ function ResetPassword() {
               required
             />
           </div>
-          <div className="form-group">
-            <label>OTP</label>
+          <div className="ds-form-group">
+            <label className="ds-label">OTP</label>
             <input
+              className="ds-input"
               type="text"
               name="otp"
               value={formData.otp}
@@ -60,9 +68,10 @@ function ResetPassword() {
               required
             />
           </div>
-          <div className="form-group">
-            <label>New Password</label>
+          <div className="ds-form-group">
+            <label className="ds-label">New Password</label>
             <input
+              className="ds-input"
               type="password"
               name="newPassword"
               value={formData.newPassword}
@@ -71,18 +80,14 @@ function ResetPassword() {
               required
             />
           </div>
-          <button type="submit" className="btn btn-primary" disabled={loading}>
+          <button type="submit" className="ds-btn ds-btn-primary" style={{ width: '100%' }} disabled={loading}>
             {loading ? "Resetting..." : "Reset Password"}
           </button>
         </form>
-        <div className="auth-links">
-          <p>
-            <Link to="/login">Back to Login</Link>
-          </p>
+        <div className="ds-mt-lg ds-text-center ds-text-small ds-text-secondary">
+          <Link to="/login" style={{ color: 'var(--text-primary)', fontWeight: '600' }}>Back to Login</Link>
         </div>
       </div>
     </div>
   );
 }
-
-export default ResetPassword;
