@@ -278,7 +278,8 @@ export function generateAuditReportPDF(reportData) {
 
     // Observed Evidence Metadata Table
     const ev = finding.observedEvidence || {};
-    const evText = `Endpoint: ${ev.endpoint || 'Internal'}  |  Source: ${ev.source || 'Application'}  |  PII Involved: ${(ev.detectedData || []).join(', ') || 'Personal Data'}  |  Occurrences: ${ev.occurrences || 1}x`;
+    const formattedSource = ev.source === 'APPLICATION_LOG' ? 'Application Log' : ev.source === 'EVENT_BUS' ? 'Event Bus' : ev.source === 'DATABASE' ? 'Database' : ev.source || 'Application';
+    const evText = `Endpoint: ${ev.endpoint || 'Internal'}  |  Source: ${formattedSource}  |  PII Involved: ${(ev.detectedData || []).join(', ') || 'Personal Data'}  |  Occurrences: ${ev.occurrences || 1}x`;
 
     doc.setTextColor(...TEXT_MUTED);
     doc.setFont('helvetica', 'bold');
@@ -292,7 +293,7 @@ export function generateAuditReportPDF(reportData) {
     doc.setTextColor(...CRITICAL);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
-    doc.text('🚨 Reason for Data Breach & Non-Compliance:', margin + 3, y);
+    doc.text('Statutory Violation Reason:', margin + 3, y);
     y += 3.5;
 
     doc.setTextColor(...TEXT_DARK);
@@ -310,7 +311,7 @@ export function generateAuditReportPDF(reportData) {
       doc.setTextColor(...PRIMARY);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(7.5);
-      doc.text('🤖 AI Root-Cause & Impact Analysis:', margin + 3, y);
+      doc.text('Detailed Compliance Explanation:', margin + 3, y);
       y += 3.5;
 
       doc.setTextColor(...TEXT_DARK);
@@ -325,7 +326,7 @@ export function generateAuditReportPDF(reportData) {
     doc.setTextColor(...LOW);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
-    doc.text('✅ Prescribed Remediation & Engineering Solution:', margin + 3, y);
+    doc.text('Prescribed Remediation & Solution:', margin + 3, y);
     y += 3.5;
 
     doc.setTextColor(...TEXT_DARK);
