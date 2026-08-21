@@ -2,15 +2,14 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { apiRequest } from "../api/api";
 
-function Register() {
+export default function Register() {
   const [formData, setFormData] = useState({ username: "", email: "", password: "" });
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [showPw, setShowPw]     = useState(false);
+  const [error, setError]       = useState("");
+  const [loading, setLoading]   = useState(false);
   const navigate = useNavigate();
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -28,56 +27,50 @@ function Register() {
 
   return (
     <div className="auth-container">
+      <div className="auth-logo">
+        <div className="auth-logo-mark">◇</div>
+        <span className="auth-logo-name">PrivGuard</span>
+      </div>
+
       <div className="auth-card">
-        <h2>Create Account</h2>
-        <p className="auth-subtitle">Register to get started</p>
+        <h1 className="auth-heading">Create your workspace.</h1>
+        <p className="auth-subtitle">Start monitoring your application's privacy behavior.</p>
+
         {error && <div className="alert alert-error">{error}</div>}
+
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Username</label>
-            <input
-              type="text"
-              name="username"
-              value={formData.username}
-              onChange={handleChange}
-              placeholder="Enter your username"
-              required
-            />
+            <input name="username" type="text" placeholder="yourname"
+              value={formData.username} onChange={handleChange} required />
           </div>
+
           <div className="form-group">
             <label>Email</label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="Enter your email"
-              required
-            />
+            <input name="email" type="email" placeholder="name@company.com"
+              value={formData.email} onChange={handleChange} required />
           </div>
+
           <div className="form-group">
             <label>Password</label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="Enter your password"
-              required
-            />
+            <div className="input-wrapper">
+              <input name="password" type={showPw ? "text" : "password"} placeholder="••••••••••••"
+                value={formData.password} onChange={handleChange} required />
+              <button type="button" className="input-eye" onClick={() => setShowPw(!showPw)}>
+                {showPw ? "🙈" : "👁"}
+              </button>
+            </div>
           </div>
+
           <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? "Registering..." : "Register"}
+            {loading ? "Creating account…" : "Create account"}
           </button>
         </form>
+
         <div className="auth-links">
-          <p>
-            Already have an account? <Link to="/login">Login</Link>
-          </p>
+          <p>Already have an account? <Link to="/login">Sign in</Link></p>
         </div>
       </div>
     </div>
   );
 }
-
-export default Register;
