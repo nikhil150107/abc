@@ -1,5 +1,14 @@
 const Event = require('../models/Event');
-const { processEvent } = require('../../Member 3');
+let processEvent;
+try {
+  processEvent = require('../../guard-intelligence').processEvent;
+} catch (e) {
+  try {
+    processEvent = require('../../Member 3').processEvent;
+  } catch (_) {
+    console.warn('[event-controller] guard-intelligence module not found');
+  }
+}
 
 // POST /api/events — Member 2 sends normalized events here
 const createEvent = async (req, res) => {
@@ -12,9 +21,11 @@ const createEvent = async (req, res) => {
     // Member 3 Core Intelligence Pipeline (Policy -> Violation -> Risk -> AI)
     let violations = [];
     try {
-      violations = await processEvent(event.toObject ? event.toObject() : event);
-      if (violations && violations.length > 0 && io) {
-        violations.forEach((v) => io.emit('NEW_VIOLATION', v));
+      if (processEvent) {
+        violations = await processEvent(event.toObject ? event.toObject() : event);
+        if (violations && violations.length > 0 && io) {
+          violations.forEach((v) => io.emit('NEW_VIOLATION', v));
+        }
       }
     } catch (complianceErr) {
       console.warn('[event-controller] Member 3 processing warning:', complianceErr.message);

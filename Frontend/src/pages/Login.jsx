@@ -39,6 +39,10 @@ export default function Login() {
         <h1 className="auth-heading">Welcome back.</h1>
         <p className="auth-subtitle">Sign in to your privacy workspace.</p>
 
+        <div className="alert alert-info" style={{ background: '#f0f9ff', border: '1px solid #bae6fd', color: '#0369a1', padding: '10px 14px', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '1rem' }}>
+          🔑 Demo credentials: <b>admin</b> / <b>Admin@123</b>
+        </div>
+
         {error && <div className="alert alert-error">{error}</div>}
 
         <form onSubmit={handleSubmit}>

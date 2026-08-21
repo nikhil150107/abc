@@ -43,17 +43,48 @@ export default function Dashboard() {
   const [selected, setSelected]     = useState(null);
   const [filter, setFilter]         = useState("ALL");
   const [lastUpdated, setLastUpdated] = useState(new Date());
+  const [scanning, setScanning]       = useState(false);
+  const [scanResult, setScanResult]   = useState(null);
 
   const fetchData = async () => {
     try {
       const [s, v] = await Promise.all([
         axios.get(`${API}/api/violations/stats/summary`),
-        axios.get(`${API}/api/violations?limit=20`),
+        axios.get(`${API}/api/violations?limit=50`),
       ]);
       setStats(s.data.data);
       setViolations(v.data.data);
       setLastUpdated(new Date());
     } catch (_) {}
+  };
+
+  const runScan = async () => {
+    setScanning(true);
+    setScanResult(null);
+    try {
+      const res = await axios.post(`${API}/api/audit/scan-target`);
+      setScanResult(res.data.scanSummary);
+      await fetchData();
+    } catch (err) {
+      alert(`Scan failed: ${err.response?.data?.message || err.message}`);
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  const exportReport = async () => {
+    try {
+      const res = await axios.get(`${API}/api/audit/report`);
+      const blob = new Blob([JSON.stringify(res.data.report, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `DPDPA_Compliance_Audit_Report_${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(`Export failed: ${err.message}`);
+    }
   };
 
   useEffect(() => {
@@ -152,16 +183,49 @@ export default function Dashboard() {
 
         <div className="pg-content">
           {/* PAGE HEADER */}
-          <div className="pg-page-header">
+          <div className="pg-page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
             <div>
               <div className="pg-page-title">{greeting()}, {user?.username}.</div>
-              <div className="pg-page-sub">Here's your application's privacy posture at a glance.</div>
+              <div className="pg-page-sub">Autonomous DPDPA Compliance Monitoring & Statutory Enforcement Engine.</div>
               <div className="pg-last-updated">
                 <div className="pg-monitor-dot" style={{ width: 6, height: 6, background: "#18794E", borderRadius: "50%", animation: "pulse 2s infinite" }} />
                 Last updated {timeAgo(lastUpdated)}
               </div>
             </div>
+
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button
+                className="btn btn-primary"
+                onClick={runScan}
+                disabled={scanning}
+                style={{ padding: "10px 18px", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "6px" }}
+              >
+                {scanning ? "🔍 Scanning Target..." : "⚡ Run Live DPDPA Scan"}
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={exportReport}
+                style={{ padding: "10px 18px", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "6px" }}
+              >
+                📄 Export Audit Report
+              </button>
+            </div>
           </div>
+
+          {scanResult && (
+            <div style={{
+              background: "#F0FDF4", border: "1px solid #BBF7D0", color: "#166534",
+              padding: "12px 18px", borderRadius: "10px", marginBottom: "1.5rem",
+              display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.9rem"
+            }}>
+              <div>
+                <b>✓ Autonomous DPDPA Audit Completed:</b> Scanned {scanResult.scannedLogs} logs & {scanResult.scannedEvents} events on target application. Identified <b>{scanResult.violationsDetected}</b> compliance discrepancies.
+              </div>
+              <span style={{ fontWeight: "700", background: "#DCFCE7", padding: "4px 10px", borderRadius: "6px" }}>
+                Score: {scanResult.complianceScore}%
+              </span>
+            </div>
+          )}
 
           {/* COMPLIANCE + METRICS */}
           <div className="pg-compliance-card">

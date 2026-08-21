@@ -45,6 +45,9 @@ const DEFAULT_POLICIES = [
   },
 ];
 
+const User   = require('../models/user');
+const bcrypt = require('bcrypt');
+
 const seedPolicies = async () => {
   for (const policy of DEFAULT_POLICIES) {
     await Policy.updateOne(
@@ -54,6 +57,24 @@ const seedPolicies = async () => {
     );
   }
   console.log('Default policies seeded.');
+
+  // Seed default verified admin user for instant testing
+  try {
+    const existingAdmin = await User.findOne({ username: 'admin' });
+    if (!existingAdmin) {
+      const hashPassword = await bcrypt.hash('Admin@123', 10);
+      await User.create({
+        username: 'admin',
+        email: 'admin@privguard.local',
+        password: hashPassword,
+        role: 'admin',
+        isVerified: true
+      });
+      console.log('Default verified admin user (admin / Admin@123) seeded.');
+    }
+  } catch (err) {
+    console.error('Error seeding admin user:', err.message);
+  }
 };
 
 module.exports = seedPolicies;

@@ -11,6 +11,7 @@ const homeRouter       = require('./routes/home-route');
 const violationRouter  = require('./routes/violation-route');
 const eventRouter      = require('./routes/event-route');
 const policyRouter     = require('./routes/policy-route');
+const auditRouter      = require('./routes/audit-route');
 
 connectTOdb().then(seedPolicies);
 
@@ -33,6 +34,7 @@ app.use('/api/dashboard',  homeRouter);
 app.use('/api/violations', violationRouter);
 app.use('/api/events',     eventRouter);
 app.use('/api/policies',   policyRouter);
+app.use('/api/audit',      auditRouter);
 
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
