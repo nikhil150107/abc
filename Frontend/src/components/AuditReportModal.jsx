@@ -152,12 +152,12 @@ export default function AuditReportModal({ report, onClose }) {
             </div>
 
             <div style={{ fontSize: '0.8rem', color: '#64748B', marginBottom: '10px', background: '#F8FAFC', padding: '6px 10px', borderRadius: '6px' }}>
-              <b>Observed Telemetry:</b> Endpoint: <code>{f.observedEvidence?.endpoint || '/api'}</code> | Source: <b>{f.observedEvidence?.source === 'APPLICATION_LOG' ? 'Application Log' : f.observedEvidence?.source === 'EVENT_BUS' ? 'Event Bus' : f.observedEvidence?.source === 'DATABASE' ? 'Database' : f.observedEvidence?.source || '—'}</b> | PII Detected: <b>{(f.observedEvidence?.detectedData || []).join(', ')}</b>
+              <b>Observed Telemetry:</b> Endpoint: <code>{f.observedEvidence?.endpoint || '/api'}</code> | Source: <b>{f.observedEvidence?.source}</b> | PII Detected: <b>{(f.observedEvidence?.detectedData || []).join(', ')}</b>
             </div>
 
             <div style={{ marginBottom: '8px' }}>
               <div style={{ fontSize: '0.82rem', fontWeight: '700', color: '#DC2626', marginBottom: '2px' }}>
-                ⚖️ Statutory Violation Reason:
+                🚨 Reason for Data Breach & Non-Compliance:
               </div>
               <p style={{ margin: 0, fontSize: '0.85rem', color: '#334155', lineHeight: '1.5' }}>
                 {f.explainableReason}
@@ -167,7 +167,7 @@ export default function AuditReportModal({ report, onClose }) {
             {f.aiExplanation && (
               <div style={{ marginBottom: '8px' }}>
                 <div style={{ fontSize: '0.82rem', fontWeight: '700', color: '#4F46E5', marginBottom: '2px' }}>
-                  🔍 Detailed Compliance Explanation:
+                  🤖 AI Root-Cause & Impact Analysis:
                 </div>
                 <p style={{ margin: 0, fontSize: '0.85rem', color: '#334155', lineHeight: '1.5' }}>
                   {f.aiExplanation}
@@ -177,7 +177,7 @@ export default function AuditReportModal({ report, onClose }) {
 
             <div>
               <div style={{ fontSize: '0.82rem', fontWeight: '700', color: '#166534', marginBottom: '2px' }}>
-                🛡️ Prescribed Remediation & Solution:
+                ✅ Prescribed Remediation & Solution:
               </div>
               <p style={{ margin: 0, fontSize: '0.85rem', color: '#334155', lineHeight: '1.5' }}>
                 {f.remediationGuidance}

@@ -141,8 +141,8 @@ const scanTargetApp = async (req, res) => {
         occurrences: group.count,
         title: `Plaintext Personal Data (${group.detectedTypes.join(', ')}) in ${group.action} Logs`,
         reason: `Application log recorded unmasked personal data [${group.detectedTypes.join(', ')}] across ${group.count} log entries. DPDPA Section 8(5) mandates reasonable security safeguards to prevent unauthorized personal data exposure in log files.`,
-        explanation: `Plaintext personal identifiers (${group.detectedTypes.join(', ')}) were written to application logs during ${group.action}, presenting an unauthorized exposure risk under DPDPA Section 8(5).`,
-        recommendation: `Deploy Winston or Bunyan log-sanitization middleware to automatically redact raw personal identifiers before write operations. Replace sensitive log fields with pseudonymized tokens (e.g., UUID hashes).`,
+        explanation: `Personal identifiers (${group.detectedTypes.join(', ')}) were written in plaintext into application logs during ${group.action}. This creates exposure vulnerabilities in server logs, monitoring tools, and disk storage.`,
+        recommendation: `Implement log-sanitization / masking middleware before logging. Mask sensitive fields (${group.detectedTypes.join(', ')}) with asterisks or pseudonymized UUIDs.`,
         status: 'OPEN',
         timestamp: new Date().toISOString(),
         policy: {
@@ -189,8 +189,8 @@ const scanTargetApp = async (req, res) => {
         occurrences: purposeMismatchEvents.length,
         title: 'Purpose-Use Mismatch: Mobile Number Used Beyond Declared Scope',
         reason: `Declared purpose for mobileNumber in Data Inventory is 'OTP verification only', but observed in ${purposeMismatchEvents.length} order/login processing events. DPDPA Section 6(1) requires processing only for declared, specified purposes.`,
-        explanation: `Customer mobile numbers collected under an OTP-only notice were subsequently used in commercial transaction processing without explicit secondary consent, violating DPDPA Section 6(1).`,
-        recommendation: `Update the itemized privacy notice to declare transaction communications for mobile numbers, or decouple phone verification from order creation. Enforce consent checks before data use.`,
+        explanation: 'Customer mobile numbers collected under an OTP-only notice were subsequently used in commercial transaction processing without explicit secondary consent.',
+        recommendation: 'Update the itemized privacy notice to declare order communications for mobile numbers, or decouple phone verification from order creation.',
         status: 'OPEN',
         timestamp: new Date().toISOString(),
         policy: {
@@ -233,8 +233,8 @@ const scanTargetApp = async (req, res) => {
         occurrences: consentBreachEvents.length,
         title: 'Consent Enforcement Failure: Marketing Processing Post-Withdrawal',
         reason: `Marketing processing event executed for user who previously triggered CONSENT_WITHDRAWN. Under DPDPA Section 6(4), Data Principal has the right to withdraw consent and processing must cease.`,
-        explanation: `Marketing communications were processed for a user who had explicitly withdrawn consent, violating DPDPA Section 6(4) which mandates the cessation of processing upon withdrawal.`,
-        recommendation: `Integrate real-time consent token checks in the marketing campaign runner to halt automated notifications immediately when a user withdraws consent.`,
+        explanation: 'The marketing engine continued automated promotional campaign dispatch even after the user revoked consent in their privacy preferences.',
+        recommendation: 'Enforce real-time consent token verification before executing any downstream marketing or notification job.',
         status: 'OPEN',
         timestamp: new Date().toISOString(),
         policy: {
@@ -278,8 +278,8 @@ const scanTargetApp = async (req, res) => {
         occurrences: retentionBreachEvents.length,
         title: `Data Retention Threshold Exceeded (${ageDays} Days vs 365-Day Schedule)`,
         reason: `Marketing data record is ${ageDays} days old, exceeding declared statutory retention limit of 365 days. DPDPA Section 8(7) requires erasing personal data upon expiry of the specified purpose.`,
-        explanation: `Marketing data records have been retained in active database storage for over 365 days, violating the purpose-based storage limitation under DPDPA Section 8(7).`,
-        recommendation: `Configure an automated database TTL policy or a scheduled cron job to securely purge or anonymize marketing records older than 365 days.`,
+        explanation: 'Historical marketing telemetry remains stored in the active database past the declared 365-day retention schedule.',
+        recommendation: 'Configure an automated database retention TTL policy or periodic purging cron job to erase records older than 365 days.',
         status: 'OPEN',
         timestamp: new Date().toISOString(),
         policy: {

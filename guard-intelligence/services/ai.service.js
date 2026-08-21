@@ -39,37 +39,37 @@ function getFallbackAI(violation) {
     case "PII_EXPOSURE":
       return {
         explanation:
-          `Plaintext personal identifiers (${detected}) were detected in application log streams. Logging raw personal data violates data minimization principles and increases exposure risk under DPDPA Section 8(5).`,
+          `Raw personal data (${detected}) was found in application logs even though the configured policy prohibits logging personal data. This creates an unnecessary exposure of personal information.`,
 
         recommendation:
-          "Deploy Winston or Bunyan log-sanitization middleware to intercept and redact raw personal identifiers before write operations. Replace sensitive log fields with pseudonymized tokens (e.g., UUID hashes) to preserve debug utility safely.",
+          "Mask or remove raw personal data before writing application logs. Use log-sanitization middleware or pseudonymized identifiers such as customerId.",
       };
 
     case "PURPOSE_MISMATCH":
       return {
         explanation:
-          `Personal data (${detected}) was processed for an operation that deviates from the user's declared consent scope. Processing data outside specified notice constraints is a direct violation of DPDPA Section 6(1).`,
+          `Personal data (${detected}) was processed for a purpose that does not match the declared or authorized processing purpose.`,
 
         recommendation:
-          "Integrate a consent enforcement layer within the API middleware to verify active user preference flags prior to downstream processing. To use data for new purposes, update the itemized privacy notice and obtain explicit consent.",
+          "Restrict processing to the declared purpose or update the consent and policy configuration before using the data for another purpose.",
       };
 
     case "RETENTION_VIOLATION":
       return {
         explanation:
-          "Personal data records have been retained in active system storage beyond the maximum authorized storage duration, violating the purpose-bound retention limitation under DPDPA Section 8(7).",
+          "Personal data has been retained beyond the maximum retention period defined by the configured policy.",
 
         recommendation:
-          "Establish an automated data deletion cron job or set up a native database Time-To-Live (TTL) index to permanently purge or irreversibly anonymize user records immediately upon retention schedule expiry.",
+          "Automatically delete, anonymize, or archive personal data when the configured retention period expires.",
       };
 
     default:
       return {
         explanation:
-          "An unauthorized data processing activity was detected that conflicts with DPDPA statutory compliance policies and notice frameworks.",
+          "A potential DPDPA compliance violation was detected during application data processing.",
 
         recommendation:
-          "Conduct a formal data flow audit, enforce role-based access control (RBAC), and apply tokenization or masking to personal data attributes to ensure alignment with statutory obligations.",
+          "Review the affected data flow, restrict unnecessary personal-data processing, and apply appropriate masking, deletion, or access controls.",
       };
   }
 }
@@ -118,9 +118,11 @@ async function enrichWithAI(violationContext) {
     [];
 
   const prompt = `
-You are a DPDPA (Digital Personal Data Protection Act) Compliance Expert.
+You are a DPDPA (Digital Personal Data Protection Act)
+Compliance Expert.
 
-A compliance violation HAS ALREADY BEEN DETECTED by a deterministic policy/rule engine.
+A compliance violation HAS ALREADY BEEN DETECTED
+by a deterministic policy/rule engine.
 
 Your job is ONLY to:
 1. Explain why the detected violation is a compliance concern.
@@ -140,19 +142,16 @@ Violation Details:
 - Title: ${violationContext.title || "N/A"}
 - Reason: ${violationContext.reason || "N/A"}
 
-Response Guidelines (CRITICAL for dashboard UX):
-- "explanation": Keep it under 2 sentences. Explain the specific DPDPA statutory provision breached (e.g. Sec 8(5) for log exposure, Sec 6(1) for purpose mismatch, Sec 8(7) for storage/retention). Do not use placeholders or generic statements.
-- "recommendation": Keep it under 2 sentences. Provide a brief, precise, and actionable technical solution (e.g. specify log sanitization middleware, real-time consent token checks, or automated database TTL indexes).
-- Tone must be objective, professional, and clear. Avoid any raw internal database codes, markdown syntax, or emojis.
-
 Return ONLY valid JSON in exactly this structure:
 
 {
-  "explanation": "Detailed explanation of the DPDPA compliance concern.",
-  "recommendation": "Specific and actionable engineering solution."
+  "explanation": "Brief explanation of why this is a DPDPA compliance concern.",
+  "recommendation": "Specific and actionable technical recommendation."
 }
 
-Do not include markdown or additional fields.`;
+Do not include markdown.
+Do not include additional fields.
+`;
 
   try {
 

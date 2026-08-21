@@ -39,64 +39,6 @@ function timeAgo(ts) {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
-const formatRuleName = (rule) => {
-  if (!rule) return "—";
-  return rule
-    .replace(/_/g, " ")
-    .toLowerCase()
-    .split(" ")
-    .map(word => {
-      if (["pan", "kyc", "pii", "otp", "aadhaar"].includes(word)) {
-        return word.toUpperCase();
-      }
-      return word.charAt(0).toUpperCase() + word.slice(1);
-    })
-    .join(" ");
-};
-
-const formatViolationType = (type) => {
-  if (!type) return "Compliance Violation";
-  switch (type) {
-    case "PII_EXPOSURE": return "PII Exposure";
-    case "PURPOSE_MISMATCH": return "Purpose Mismatch";
-    case "RETENTION_VIOLATION": return "Retention Violation";
-    default:
-      return type
-        .replace(/_/g, " ")
-        .toLowerCase()
-        .replace(/\b\w/g, c => c.toUpperCase());
-  }
-};
-
-const formatServiceName = (srv) => {
-  if (!srv) return "—";
-  return srv
-    .replace(/-/g, " ")
-    .toLowerCase()
-    .split(" ")
-    .map(word => {
-      if (word === "demoapp") return "DemoApp";
-      return word.charAt(0).toUpperCase() + word.slice(1);
-    })
-    .join(" ");
-};
-
-const formatStatus = (status) => {
-  if (!status) return "—";
-  return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
-};
-
-const formatSourceName = (src) => {
-  if (!src) return "—";
-  if (src === "API") return "API";
-  return src
-    .replace(/_/g, " ")
-    .toLowerCase()
-    .split(" ")
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-};
-
 export default function Dashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -187,7 +129,7 @@ export default function Dashboard() {
       setViolations(prev => [v, ...prev.slice(0, 49)]);
       setLiveEvents(prev => [{
         time: new Date(v.timestamp || Date.now()).toLocaleTimeString(),
-        msg: `Violation — ${formatViolationType(v.type)} (${v.severity ? v.severity.charAt(0).toUpperCase() + v.severity.slice(1).toLowerCase() : ""})`,
+        msg: `Violation — ${v.type.replace(/_/g, " ")} (${v.severity})`,
         tag: "violation",
       }, ...prev.slice(0, 49)]);
       fetchData();
@@ -196,7 +138,7 @@ export default function Dashboard() {
     socket.on("NEW_EVENT", (e) => {
       setLiveEvents(prev => [{
         time: new Date(e.timestamp || Date.now()).toLocaleTimeString(),
-        msg: `${formatViolationType(e.type)} · ${e.endpoint || formatServiceName(e.service) || ""}`,
+        msg: `${e.type.replace(/_/g, " ")} · ${e.endpoint || e.service || ""}`,
         tag: "event",
       }, ...prev.slice(0, 49)]);
       fetchData();
@@ -420,17 +362,17 @@ export default function Dashboard() {
                     <div className="v-dot" style={{ background: SEV_COLOR[v.severity] || "#98A2B3" }} />
                     <div className="v-body">
                       <div className="v-title">
-                        {v.title || formatViolationType(v.type)}
+                        {v.title || v.type.replace(/_/g, " ")}
                         {v.occurrences > 1 && (
                           <span style={{ marginLeft: 6, fontSize: 10, background: "#FEF08A", color: "#854D0E", padding: "1px 6px", borderRadius: 4, fontWeight: 700 }}>
                             {v.occurrences}x
                           </span>
                         )}
                       </div>
-                      <div className="v-sub">{v.endpoint || "—"} · {formatServiceName(v.service)} · {v.detectedPII?.join(", ")}</div>
+                      <div className="v-sub">{v.endpoint || v.service} · {v.detectedPII?.join(", ")}</div>
                     </div>
                     <span className="v-badge" style={{ background: SEV_COLOR[v.severity], color: "white" }}>
-                      {v.severity ? v.severity.charAt(0).toUpperCase() + v.severity.slice(1).toLowerCase() : ""}
+                      {v.severity}
                     </span>
                     <span className="v-time">{timeAgo(v.timestamp)}</span>
                   </div>
@@ -456,11 +398,9 @@ export default function Dashboard() {
                 {selected.severity === "HIGH" ? "🔴" : selected.severity === "CRITICAL" ? "🟣" : selected.severity === "MEDIUM" ? "🟡" : "🟢"}
               </div>
               <div>
-                <div className="modal-title">{selected.title || formatViolationType(selected.type)}</div>
+                <div className="modal-title">{selected.title || selected.type.replace(/_/g, " ")}</div>
                 <div className="modal-sub">
-                  <span className="v-badge" style={{ background: SEV_COLOR[selected.severity] }}>
-                    {selected.severity ? selected.severity.charAt(0).toUpperCase() + selected.severity.slice(1).toLowerCase() : ""}
-                  </span>
+                  <span className="v-badge" style={{ background: SEV_COLOR[selected.severity] }}>{selected.severity}</span>
                   Risk Score: <b>{selected.riskScore}</b>
                 </div>
               </div>
@@ -468,10 +408,10 @@ export default function Dashboard() {
 
             <div className="modal-grid">
               <div className="modal-field"><span>Endpoint</span><b>{selected.endpoint || "—"}</b></div>
-              <div className="modal-field"><span>Service</span><b>{formatServiceName(selected.service)}</b></div>
+              <div className="modal-field"><span>Service</span><b>{selected.service || "—"}</b></div>
               <div className="modal-field"><span>Detected PII</span><b>{selected.detectedPII?.join(", ") || "—"}</b></div>
-              <div className="modal-field"><span>Status</span><b>{formatStatus(selected.status)}</b></div>
-              <div className="modal-field"><span>Policy Rule</span><b>{formatRuleName(selected.policy?.rule)}</b></div>
+              <div className="modal-field"><span>Status</span><b>{selected.status}</b></div>
+              <div className="modal-field"><span>Policy Rule</span><b>{selected.policy?.rule || "—"}</b></div>
               <div className="modal-field"><span>Detected At</span><b>{new Date(selected.timestamp).toLocaleString()}</b></div>
             </div>
 
@@ -483,12 +423,12 @@ export default function Dashboard() {
             )}
 
             <div className="modal-section">
-              <div className="modal-section-title">🔍 Detailed Compliance Explanation</div>
+              <div className="modal-section-title">🤖 AI Explanation</div>
               <p>{selected.explanation || selected.aiExplanation || "No explanation provided."}</p>
             </div>
 
             <div className="modal-section">
-              <div className="modal-section-title">🛡️ Prescribed Remediation & Solution</div>
+              <div className="modal-section-title">✅ Recommended Fix</div>
               <p>{selected.recommendation || "No recommendation provided."}</p>
             </div>
           </div>
