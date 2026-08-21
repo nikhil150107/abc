@@ -3,7 +3,7 @@ import autoTable from 'jspdf-autotable';
 
 /**
  * Generates an executive, publication-grade DPDPA Statutory Compliance Audit Report PDF.
- * Strictly formatted for EXACTLY 2 PAGES with high-density, professional alignment.
+ * Strictly formatted for EXACTLY 2 PAGES with 100% standard ASCII characters (zero broken characters).
  *
  * Page 1: Executive Metadata, Compliance Score, 5-Pillar Matrix, Severity Distribution & Finding Summary Table.
  * Page 2: Detailed Technical Findings (Root Cause, Impact, Remediation) & Auditor Attestation Sign-off.
@@ -54,7 +54,7 @@ export function generateAuditReportPDF(reportData) {
   doc.setTextColor(148, 163, 184);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(6.5);
-  doc.text('DIGITAL PERSONAL DATA PROTECTION ACT — STATUTORY AUDIT', margin + 5, y + 5.5);
+  doc.text('DIGITAL PERSONAL DATA PROTECTION ACT - STATUTORY AUDIT', margin + 5, y + 5.5);
 
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
@@ -117,7 +117,7 @@ export function generateAuditReportPDF(reportData) {
   doc.text('Audit Scope:', margin + 42, y + 12);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...TEXT_DARK);
-  doc.text('Application Logs · Data Inventory · Processing Events · MySQL Schema', margin + 70, y + 12);
+  doc.text('Application Logs, Data Inventory, Processing Events, MySQL Schema', margin + 70, y + 12);
 
   doc.setTextColor(...TEXT_MUTED);
   doc.setFont('helvetica', 'bold');
@@ -137,35 +137,35 @@ export function generateAuditReportPDF(reportData) {
 
   const pillarRows = [
     [
-      'Pillar 1 — Notice & Purpose Specification',
+      'Pillar 1 - Notice & Purpose Specification',
       'Sec 5 & 6',
       'Itemized notices, declared purpose limitation clauses, DPO grievance details',
       'PASS',
       'Compliant'
     ],
     [
-      'Pillar 2 — Data Principal Rights Centre',
-      'Sec 11–14',
+      'Pillar 2 - Data Principal Rights Centre',
+      'Sec 11-14',
       'Access (Sec 11), Correction/Erasure (Sec 12), Grievance (Sec 13), Nominee (Sec 14)',
       'PASS',
       'Compliant'
     ],
     [
-      'Pillar 3 — Log Sanitisation & Safeguards',
+      'Pillar 3 - Log Sanitisation & Safeguards',
       'Sec 8(5)',
       'Prevention of plaintext personal identifiers (Email, Phone, PAN) in log streams',
       exec.severityBreakdown?.CRITICAL > 0 ? 'FAIL' : 'ATTENTION',
       'Action Required'
     ],
     [
-      'Pillar 4 — Purpose Limitation & Use Scope',
+      'Pillar 4 - Purpose Limitation & Use Scope',
       'Sec 6(1)',
       'Restricting data processing exclusively to declared collection scope (e.g. OTP use)',
       'ATTENTION',
       'Action Required'
     ],
     [
-      'Pillar 5 — Consent Lifecycle & Retention',
+      'Pillar 5 - Consent Lifecycle & Retention',
       'Sec 6(4) & 8(7)',
       'Ceasing processing upon consent revocation; purging expired telemetry (>365 days)',
       'ATTENTION',
@@ -316,7 +316,7 @@ export function generateAuditReportPDF(reportData) {
   doc.setFontSize(6.5);
   doc.setTextColor(...TEXT_MUTED);
   doc.text(
-    `PrivGuard DPDPA Audit Report — Confidential   |   Target: ${report.targetApplication || 'DemoApp'}   |   Page 1 of 2`,
+    `PrivGuard DPDPA Audit Report - Confidential   |   Target: ${report.targetApplication || 'DemoApp'}   |   Page 1 of 2`,
     pageWidth / 2,
     pageHeight - 5,
     { align: 'center' }
@@ -335,7 +335,7 @@ export function generateAuditReportPDF(reportData) {
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8.5);
-  doc.text('DPDPA Compliance Audit Report — Detailed Statutory Findings & Remediations', margin + 4, y + 6.5);
+  doc.text('DPDPA Compliance Audit Report - Detailed Statutory Findings & Remediations', margin + 4, y + 6.5);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
   doc.setTextColor(203, 213, 225);
@@ -348,7 +348,7 @@ export function generateAuditReportPDF(reportData) {
     {
       num: 1,
       title: 'Plaintext Personal Data & Sensitive KYC Identifiers in Application Logs',
-      section: 'DPDPA Section 8(5) — Technical Safeguards',
+      section: 'DPDPA Section 8(5) - Technical Safeguards',
       severity: 'CRITICAL',
       riskScore: 95,
       endpoint: '/user_login, /user_registered, /kyc_doc_uploaded, /order_created',
@@ -362,7 +362,7 @@ export function generateAuditReportPDF(reportData) {
     {
       num: 2,
       title: 'Purpose-Use Mismatch: Customer Mobile Number Processed Beyond Declared Scope',
-      section: 'DPDPA Section 6(1) — Purpose Limitation',
+      section: 'DPDPA Section 6(1) - Purpose Limitation',
       severity: 'HIGH',
       riskScore: 78,
       endpoint: '/api/orders & /api/users/login',
@@ -376,7 +376,7 @@ export function generateAuditReportPDF(reportData) {
     {
       num: 3,
       title: 'Consent Enforcement Failure: Marketing Processing Continued Post-Withdrawal',
-      section: 'DPDPA Section 6(4) — Right to Withdraw Consent',
+      section: 'DPDPA Section 6(4) - Right to Withdraw Consent',
       severity: 'CRITICAL',
       riskScore: 92,
       endpoint: '/marketing/process',
@@ -390,7 +390,7 @@ export function generateAuditReportPDF(reportData) {
     {
       num: 4,
       title: 'Data Retention Threshold Exceeded Beyond Mandated 365-Day Schedule',
-      section: 'DPDPA Section 8(7) — Storage Limitation',
+      section: 'DPDPA Section 8(7) - Storage Limitation',
       severity: 'MEDIUM',
       riskScore: 65,
       endpoint: '/data-retention',
@@ -441,45 +441,45 @@ export function generateAuditReportPDF(reportData) {
     doc.text(`Endpoints: ${f.endpoint}  |  PII: ${f.pii}  |  Occurrences: ${f.occurrences}`, margin + 21, y);
     y += 4;
 
-    // POINT A: Reason for Breach
+    // POINT A: Reason for Breach (Clean ASCII)
     doc.setTextColor(...CRITICAL);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(6.5);
-    doc.text('🚨 Statutory Non-Compliance Reason:', margin + 3, y);
+    doc.text('STATUTORY NON-COMPLIANCE REASON:', margin + 3, y);
     y += 3.2;
 
     doc.setTextColor(...TEXT_DARK);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.2);
-    const reasonLines = doc.splitTextToSize(`• ${f.reason}`, contentWidth - 6);
+    const reasonLines = doc.splitTextToSize(`- ${f.reason}`, contentWidth - 6);
     doc.text(reasonLines, margin + 3, y);
     y += (reasonLines.length * 2.8) + 1.5;
 
-    // POINT B: Root Cause & AI Analysis
+    // POINT B: Root Cause & AI Analysis (Clean ASCII)
     doc.setTextColor(...PRIMARY);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(6.5);
-    doc.text('🤖 Root-Cause & AI Analysis:', margin + 3, y);
+    doc.text('ROOT-CAUSE & IMPACT ANALYSIS:', margin + 3, y);
     y += 3.2;
 
     doc.setTextColor(...TEXT_DARK);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.2);
-    const aiLines = doc.splitTextToSize(`• ${f.aiAnalysis}`, contentWidth - 6);
+    const aiLines = doc.splitTextToSize(`- ${f.aiAnalysis}`, contentWidth - 6);
     doc.text(aiLines, margin + 3, y);
     y += (aiLines.length * 2.8) + 1.5;
 
-    // POINT C: Prescribed Remediation
+    // POINT C: Prescribed Remediation (Clean ASCII)
     doc.setTextColor(...LOW);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(6.5);
-    doc.text('✅ Prescribed Remediation & Fix:', margin + 3, y);
+    doc.text('PRESCRIBED REMEDIATION & FIX:', margin + 3, y);
     y += 3.2;
 
     doc.setTextColor(...TEXT_DARK);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.2);
-    const remLines = doc.splitTextToSize(`• ${f.remediation}`, contentWidth - 6);
+    const remLines = doc.splitTextToSize(`- ${f.remediation}`, contentWidth - 6);
     doc.text(remLines, margin + 3, y);
     y += (remLines.length * 2.8) + 4.5;
   });
@@ -511,7 +511,7 @@ export function generateAuditReportPDF(reportData) {
   doc.setFontSize(6.5);
   doc.setTextColor(...TEXT_MUTED);
   doc.text(
-    `PrivGuard DPDPA Audit Report — Confidential   |   Target: ${report.targetApplication || 'DemoApp'}   |   Page 2 of 2`,
+    `PrivGuard DPDPA Audit Report - Confidential   |   Target: ${report.targetApplication || 'DemoApp'}   |   Page 2 of 2`,
     pageWidth / 2,
     pageHeight - 5,
     { align: 'center' }
