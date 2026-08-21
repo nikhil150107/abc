@@ -336,10 +336,17 @@ export default function Dashboard() {
                   <div className="live-empty">{filter === "ALL" ? "No violations yet." : `No ${filter} violations.`}</div>
                 )}
                 {filtered.map((v) => (
-                  <div key={v._id} className="v-row" onClick={() => setSelected(v)}>
+                  <div key={v._id || v.violationId} className="v-row" onClick={() => setSelected(v)}>
                     <div className="v-dot" style={{ background: SEV_COLOR[v.severity] || "#98A2B3" }} />
                     <div className="v-body">
-                      <div className="v-title">{v.type.replace(/_/g, " ")}</div>
+                      <div className="v-title">
+                        {v.title || v.type.replace(/_/g, " ")}
+                        {v.occurrences > 1 && (
+                          <span style={{ marginLeft: 6, fontSize: 10, background: "#FEF08A", color: "#854D0E", padding: "1px 6px", borderRadius: 4, fontWeight: 700 }}>
+                            {v.occurrences}x
+                          </span>
+                        )}
+                      </div>
                       <div className="v-sub">{v.endpoint || v.service} · {v.detectedPII?.join(", ")}</div>
                     </div>
                     <span className="v-badge" style={{ background: SEV_COLOR[v.severity], color: "white" }}>
@@ -369,7 +376,7 @@ export default function Dashboard() {
                 {selected.severity === "HIGH" ? "🔴" : selected.severity === "CRITICAL" ? "🟣" : selected.severity === "MEDIUM" ? "🟡" : "🟢"}
               </div>
               <div>
-                <div className="modal-title">{selected.type.replace(/_/g, " ")}</div>
+                <div className="modal-title">{selected.title || selected.type.replace(/_/g, " ")}</div>
                 <div className="modal-sub">
                   <span className="v-badge" style={{ background: SEV_COLOR[selected.severity] }}>{selected.severity}</span>
                   Risk Score: <b>{selected.riskScore}</b>
@@ -386,9 +393,16 @@ export default function Dashboard() {
               <div className="modal-field"><span>Detected At</span><b>{new Date(selected.timestamp).toLocaleString()}</b></div>
             </div>
 
+            {selected.reason && (
+              <div className="modal-section">
+                <div className="modal-section-title">⚖️ Statutory Reason</div>
+                <p>{selected.reason}</p>
+              </div>
+            )}
+
             <div className="modal-section">
               <div className="modal-section-title">🤖 AI Explanation</div>
-              <p>{selected.explanation || "No explanation provided."}</p>
+              <p>{selected.explanation || selected.aiExplanation || "No explanation provided."}</p>
             </div>
 
             <div className="modal-section">

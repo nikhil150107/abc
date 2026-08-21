@@ -14,6 +14,55 @@ try {
 const DEMOAPP_URL = process.env.DEMOAPP_URL || 'http://localhost:5001';
 
 /**
+ * Calculates a standard DPDPA Statutory Compliance Score based on 5 core statutory pillars:
+ * 1. Privacy Notice & Specification of Purpose (DPDPA Sec 5 & 6) - 20 pts
+ * 2. Data Principal Statutory Rights Framework (DPDPA Sec 11-14) - 20 pts
+ * 3. Log Sanitization & Technical Safeguards (DPDPA Sec 8(5)) - 20 pts
+ * 4. Purpose Limitation & Processing Scope (DPDPA Sec 6(1)) - 20 pts
+ * 5. Consent Lifecycle & Storage Limitation (DPDPA Sec 6(4) & Sec 8(7)) - 20 pts
+ */
+const calculateComplianceScore = ({ hasNotice, hasRights, logFindings, purposeFindings, consentFindings, retentionFindings }) => {
+  let score = 0;
+
+  // Pillar 1: Notice & Transparency (20 pts)
+  if (hasNotice) score += 20;
+
+  // Pillar 2: Principal Rights Framework (20 pts)
+  if (hasRights) score += 20;
+
+  // Pillar 3: Log Sanitization & Safeguards (20 pts)
+  const hasCriticalLog = logFindings.some(f => f.severity === 'CRITICAL');
+  const hasHighLog = logFindings.some(f => f.severity === 'HIGH');
+  if (!hasCriticalLog && !hasHighLog) {
+    score += 20;
+  } else if (!hasCriticalLog) {
+    score += 10; // High PII (email/phone) detected
+  } else {
+    score += 0;  // Critical (PAN/Aadhaar) detected
+  }
+
+  // Pillar 4: Purpose Limitation (20 pts)
+  if (purposeFindings.length === 0) {
+    score += 20;
+  } else {
+    score += Math.max(0, 20 - (purposeFindings.length * 5));
+  }
+
+  // Pillar 5: Consent Lifecycle & Retention (20 pts)
+  const hasConsentBreach = consentFindings.length > 0;
+  const hasRetentionBreach = retentionFindings.length > 0;
+  if (!hasConsentBreach && !hasRetentionBreach) {
+    score += 20;
+  } else if (!hasConsentBreach || !hasRetentionBreach) {
+    score += 10;
+  } else {
+    score += 5;
+  }
+
+  return Math.max(0, Math.min(100, Math.round(score)));
+};
+
+/**
  * POST /api/audit/scan-target
  * Runs an autonomous end-to-end DPDPA compliance audit on DemoApp (Target).
  */
@@ -30,180 +79,235 @@ const scanTargetApp = async (req, res) => {
       });
     }
 
-    const { evidence, application } = await evidenceRes.json();
-    const { inventory, policy, events = [], logs = [], consents = [], users = [] } = evidence;
+    const { evidence } = await evidenceRes.json();
+    const { policy = {}, events = [], logs = [], consents = [], users = [] } = evidence;
+
+    // Reset previous target scan findings to avoid duplicate accumulation
+    await Violation.deleteMany({ service: { $in: ['demoapp-core', 'demoapp-commerce', 'demoapp-marketing', 'demoapp-storage'] } });
 
     const detectedViolations = [];
-    const scannedEvents = [];
+    const logFindings = [];
+    const purposeFindings = [];
+    const consentFindings = [];
+    const retentionFindings = [];
 
     // -------------------------------------------------------------------------
     // RULE 1: Inspect Application Logs for PII Leakage (DPDPA Sec 8(5))
+    // Groups findings by distinct Action & Detected PII types
     // -------------------------------------------------------------------------
+    const logGroupMap = new Map();
+
     for (const log of logs) {
       const rawText = `${log.message} ${JSON.stringify(log.rawLogData || {})}`;
       const piiFindings = detectPII(rawText);
 
       if (piiFindings.length > 0) {
-        const detectedTypes = [...new Set(piiFindings.map(f => f.type))];
-        const isCritical = detectedTypes.includes('PAN') || detectedTypes.includes('AADHAAR');
-        const severity = isCritical ? 'CRITICAL' : 'HIGH';
-        const riskScore = isCritical ? 95 : 85;
+        const detectedTypes = [...new Set(piiFindings.map(f => f.type))].sort();
+        const groupKey = `${log.action || 'GENERAL_LOG'}:${detectedTypes.join('-')}`;
 
-        const violationId = `VIO-LOG-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-        const violationDoc = {
-          violationId,
-          organizationId: 'ORG-001',
-          applicationId: 'APP-DEMOAPP',
-          eventId: log.logId || `LOG-${Date.now()}`,
-          policyId: isCritical ? 'POL-003' : 'POL-001',
-          type: 'PII_EXPOSURE',
-          severity,
-          riskScore,
-          service: 'demoapp-core',
-          source: 'APPLICATION_LOG',
-          endpoint: log.action ? `/${log.action.toLowerCase()}` : '/app-logs',
-          detectedData: detectedTypes,
-          detectedPII: detectedTypes,
-          title: `Plaintext Personal Data (${detectedTypes.join(', ')}) Detected in Logs`,
-          reason: `Application log recorded unmasked personal data fields [${detectedTypes.join(', ')}]. DPDPA Section 8(5) mandates reasonable security safeguards to prevent unnecessary data exposure.`,
-          explanation: `Customer sensitive identifiers were written in plaintext to server logs (${log.action || 'system log'}). This creates exposure vulnerability in log management and observability tooling.`,
-          recommendation: `Apply log-sanitization / masking middleware before writing logs. Ensure sensitive PII (${detectedTypes.join(', ')}) is redacted or hashed.`,
-          status: 'OPEN',
-          timestamp: log.createdAt || new Date().toISOString(),
-          policy: {
-            policyId: isCritical ? 'POL-003' : 'POL-001',
-            rule: isCritical ? 'PAN_LOGGING_PROHIBITED' : 'EMAIL_LOGGING_PROHIBITED'
-          }
-        };
-
-        // Save and push
-        await Violation.updateOne({ violationId }, { $set: violationDoc }, { upsert: true });
-        detectedViolations.push(violationDoc);
-        if (io) io.emit('NEW_VIOLATION', violationDoc);
+        if (!logGroupMap.has(groupKey)) {
+          logGroupMap.set(groupKey, {
+            action: log.action || 'GENERAL_LOG',
+            detectedTypes,
+            sampleLog: log,
+            count: 1
+          });
+        } else {
+          logGroupMap.get(groupKey).count++;
+        }
       }
     }
 
+    for (const [key, group] of logGroupMap.entries()) {
+      const isCritical = group.detectedTypes.includes('PAN') || group.detectedTypes.includes('AADHAAR');
+      const severity = isCritical ? 'CRITICAL' : 'HIGH';
+      const riskScore = isCritical ? 95 : 85;
+
+      const violationId = `VIO-LOG-${group.action}-${group.detectedTypes.join('_')}`;
+      const violationDoc = {
+        violationId,
+        organizationId: 'ORG-001',
+        applicationId: 'APP-DEMOAPP',
+        eventId: group.sampleLog.logId || `LOG-${Date.now()}`,
+        policyId: isCritical ? 'POL-003' : 'POL-001',
+        type: 'PII_EXPOSURE',
+        severity,
+        riskScore,
+        service: 'demoapp-core',
+        source: 'APPLICATION_LOG',
+        endpoint: group.action ? `/${group.action.toLowerCase()}` : '/app-logs',
+        detectedData: group.detectedTypes,
+        detectedPII: group.detectedTypes,
+        occurrences: group.count,
+        title: `Plaintext Personal Data (${group.detectedTypes.join(', ')}) in ${group.action} Logs`,
+        reason: `Application log recorded unmasked personal data [${group.detectedTypes.join(', ')}] across ${group.count} log entries. DPDPA Section 8(5) mandates reasonable security safeguards to prevent unauthorized personal data exposure in log files.`,
+        explanation: `Personal identifiers (${group.detectedTypes.join(', ')}) were written in plaintext into application logs during ${group.action}. This creates exposure vulnerabilities in server logs, monitoring tools, and disk storage.`,
+        recommendation: `Implement log-sanitization / masking middleware before logging. Mask sensitive fields (${group.detectedTypes.join(', ')}) with asterisks or pseudonymized UUIDs.`,
+        status: 'OPEN',
+        timestamp: new Date().toISOString(),
+        policy: {
+          policyId: isCritical ? 'POL-003' : 'POL-001',
+          rule: isCritical ? 'PAN_LOGGING_PROHIBITED' : 'EMAIL_LOGGING_PROHIBITED'
+        }
+      };
+
+      await Violation.updateOne({ violationId }, { $set: violationDoc }, { upsert: true });
+      detectedViolations.push(violationDoc);
+      logFindings.push(violationDoc);
+      if (io) io.emit('NEW_VIOLATION', violationDoc);
+    }
+
     // -------------------------------------------------------------------------
-    // RULE 2: Inspect Events for Purpose Mismatch & Consent Withdrawal Failure
+    // RULE 2: Inspect Events for Purpose Mismatch (DPDPA Sec 6(1))
     // -------------------------------------------------------------------------
-    for (const evt of events) {
-      const dataFields = Array.isArray(evt.dataFields)
+    const purposeMismatchEvents = events.filter(evt => {
+      const fields = Array.isArray(evt.dataFields)
         ? evt.dataFields
         : typeof evt.dataFields === 'string'
         ? JSON.parse(evt.dataFields || '[]')
         : [];
+      return fields.includes('mobileNumber') && (evt.eventType === 'USER_LOGIN' || evt.eventType === 'ORDER_CREATED');
+    });
 
-      // Check Purpose Mismatch: Mobile declared for OTP only, but used in Login/Order
-      if (
-        dataFields.includes('mobileNumber') &&
-        (evt.eventType === 'USER_LOGIN' || evt.eventType === 'ORDER_CREATED')
-      ) {
-        const violationId = `VIO-PURPOSE-${evt.eventId || Date.now()}`;
-        const violationDoc = {
-          violationId,
-          organizationId: 'ORG-001',
-          applicationId: 'APP-DEMOAPP',
-          eventId: evt.eventId || `EVT-${Date.now()}`,
+    if (purposeMismatchEvents.length > 0) {
+      const violationId = 'VIO-PURPOSE-MOBILE-USE-MISMATCH';
+      const sampleEvt = purposeMismatchEvents[0];
+      const violationDoc = {
+        violationId,
+        organizationId: 'ORG-001',
+        applicationId: 'APP-DEMOAPP',
+        eventId: sampleEvt.eventId || `EVT-${Date.now()}`,
+        policyId: 'POL-004',
+        type: 'PURPOSE_MISMATCH',
+        severity: 'HIGH',
+        riskScore: 78,
+        service: 'demoapp-commerce',
+        source: 'API',
+        endpoint: '/api/orders',
+        detectedData: ['mobileNumber'],
+        detectedPII: ['PHONE'],
+        occurrences: purposeMismatchEvents.length,
+        title: 'Purpose-Use Mismatch: Mobile Number Used Beyond Declared Scope',
+        reason: `Declared purpose for mobileNumber in Data Inventory is 'OTP verification only', but observed in ${purposeMismatchEvents.length} order/login processing events. DPDPA Section 6(1) requires processing only for declared, specified purposes.`,
+        explanation: 'Customer mobile numbers collected under an OTP-only notice were subsequently used in commercial transaction processing without explicit secondary consent.',
+        recommendation: 'Update the itemized privacy notice to declare order communications for mobile numbers, or decouple phone verification from order creation.',
+        status: 'OPEN',
+        timestamp: new Date().toISOString(),
+        policy: {
           policyId: 'POL-004',
-          type: 'PURPOSE_MISMATCH',
-          severity: 'HIGH',
-          riskScore: 78,
-          service: 'demoapp-commerce',
-          source: 'API',
-          endpoint: evt.eventType === 'USER_LOGIN' ? '/api/users/login' : '/api/orders',
-          detectedData: ['mobileNumber'],
-          detectedPII: ['PHONE'],
-          title: 'Purpose-Use Mismatch: Mobile Number Used Beyond Declared Scope',
-          reason: `Declared purpose for mobileNumber in Data Inventory is 'OTP verification only', but observed processing event is '${evt.eventType}'. DPDPA Section 6(1) requires processing only for declared, specified purposes.`,
-          explanation: 'Personal data collected under a specific notice (OTP verification) was subsequently processed in general business operations without separate lawful basis.',
-          recommendation: 'Update privacy notice to declare order/login processing for mobile numbers or decouple mobile verification from order records.',
-          status: 'OPEN',
-          timestamp: evt.createdAt || new Date().toISOString(),
-          policy: {
-            policyId: 'POL-004',
-            rule: 'PURPOSE_MISMATCH'
-          }
-        };
+          rule: 'PURPOSE_MISMATCH'
+        }
+      };
 
-        await Violation.updateOne({ violationId }, { $set: violationDoc }, { upsert: true });
-        detectedViolations.push(violationDoc);
-        if (io) io.emit('NEW_VIOLATION', violationDoc);
-      }
-
-      // Check Consent Enforcement: Marketing processing post consent withdrawal
-      if (
-        evt.eventType === 'MARKETING_PROCESSING' &&
-        (evt.metadata?.trigger === 'POST_CONSENT_WITHDRAWAL' || evt.metadata?.note?.includes('CONSENT_ENFORCEMENT'))
-      ) {
-        const violationId = `VIO-CONSENT-${evt.eventId || Date.now()}`;
-        const violationDoc = {
-          violationId,
-          organizationId: 'ORG-001',
-          applicationId: 'APP-DEMOAPP',
-          eventId: evt.eventId || `EVT-${Date.now()}`,
-          policyId: 'POL-004',
-          type: 'PURPOSE_MISMATCH',
-          severity: 'CRITICAL',
-          riskScore: 92,
-          service: 'demoapp-marketing',
-          source: 'EVENT_BUS',
-          endpoint: '/marketing/process',
-          detectedData: ['email', 'mobileNumber'],
-          detectedPII: ['EMAIL', 'PHONE'],
-          title: 'Consent Enforcement Failure: Marketing Continued Post-Withdrawal',
-          reason: `Marketing processing event executed for user who previously triggered CONSENT_WITHDRAWN. Under DPDPA Section 6(4), Data Principal has the right to withdraw consent and processing must cease within reasonable time.`,
-          explanation: 'Marketing automation service continues dispatching campaigns even after the user revoked consent in their privacy preferences.',
-          recommendation: 'Implement real-time consent verification gate before initiating any marketing campaign dispatches.',
-          status: 'OPEN',
-          timestamp: evt.createdAt || new Date().toISOString(),
-          policy: {
-            policyId: 'POL-004',
-            rule: 'PURPOSE_MISMATCH'
-          }
-        };
-
-        await Violation.updateOne({ violationId }, { $set: violationDoc }, { upsert: true });
-        detectedViolations.push(violationDoc);
-        if (io) io.emit('NEW_VIOLATION', violationDoc);
-      }
-
-      // Check Retention Period Exceeded (>365 days for marketing)
-      const eventAgeDays = Math.floor((Date.now() - new Date(evt.createdAt).getTime()) / (1000 * 60 * 60 * 24));
-      if (evt.eventType === 'MARKETING_PROCESSING' && eventAgeDays > 365) {
-        const violationId = `VIO-RETENTION-${evt.eventId || Date.now()}`;
-        const violationDoc = {
-          violationId,
-          organizationId: 'ORG-001',
-          applicationId: 'APP-DEMOAPP',
-          eventId: evt.eventId || `EVT-${Date.now()}`,
-          policyId: 'POL-005',
-          type: 'RETENTION_VIOLATION',
-          severity: 'MEDIUM',
-          riskScore: 65,
-          service: 'demoapp-storage',
-          source: 'DATABASE',
-          endpoint: '/data-retention',
-          detectedData: ['marketingData'],
-          detectedPII: ['EMAIL'],
-          title: `Data Retention Exceeded: Record Age (${eventAgeDays} days) Exceeds 365-Day Schedule`,
-          reason: `Marketing data record is ${eventAgeDays} days old, exceeding declared retention limit of 365 days. DPDPA Section 8(7) requires erasing personal data upon expiry of the specified purpose.`,
-          explanation: 'Outdated marketing telemetry remains stored in application database without automated purging lifecycle.',
-          recommendation: 'Implement automated data purge cron or database TTL index to delete marketing records after 365 days.',
-          status: 'OPEN',
-          timestamp: evt.createdAt || new Date().toISOString(),
-          policy: {
-            policyId: 'POL-005',
-            rule: 'RETENTION_VIOLATION'
-          }
-        };
-
-        await Violation.updateOne({ violationId }, { $set: violationDoc }, { upsert: true });
-        detectedViolations.push(violationDoc);
-        if (io) io.emit('NEW_VIOLATION', violationDoc);
-      }
+      await Violation.updateOne({ violationId }, { $set: violationDoc }, { upsert: true });
+      detectedViolations.push(violationDoc);
+      purposeFindings.push(violationDoc);
+      if (io) io.emit('NEW_VIOLATION', violationDoc);
     }
 
-    // 2. Audit Trail logging
+    // -------------------------------------------------------------------------
+    // RULE 3: Consent Enforcement: Marketing Post-Withdrawal (DPDPA Sec 6(4))
+    // -------------------------------------------------------------------------
+    const consentBreachEvents = events.filter(evt =>
+      evt.eventType === 'MARKETING_PROCESSING' &&
+      (evt.metadata?.trigger === 'POST_CONSENT_WITHDRAWAL' || evt.metadata?.note?.includes('CONSENT_ENFORCEMENT'))
+    );
+
+    if (consentBreachEvents.length > 0) {
+      const violationId = 'VIO-CONSENT-MARKETING-POST-WITHDRAWAL';
+      const sampleEvt = consentBreachEvents[0];
+      const violationDoc = {
+        violationId,
+        organizationId: 'ORG-001',
+        applicationId: 'APP-DEMOAPP',
+        eventId: sampleEvt.eventId || `EVT-${Date.now()}`,
+        policyId: 'POL-004',
+        type: 'PURPOSE_MISMATCH',
+        severity: 'CRITICAL',
+        riskScore: 92,
+        service: 'demoapp-marketing',
+        source: 'EVENT_BUS',
+        endpoint: '/marketing/process',
+        detectedData: ['email', 'mobileNumber'],
+        detectedPII: ['EMAIL', 'PHONE'],
+        occurrences: consentBreachEvents.length,
+        title: 'Consent Enforcement Failure: Marketing Processing Post-Withdrawal',
+        reason: `Marketing processing event executed for user who previously triggered CONSENT_WITHDRAWN. Under DPDPA Section 6(4), Data Principal has the right to withdraw consent and processing must cease.`,
+        explanation: 'The marketing engine continued automated promotional campaign dispatch even after the user revoked consent in their privacy preferences.',
+        recommendation: 'Enforce real-time consent token verification before executing any downstream marketing or notification job.',
+        status: 'OPEN',
+        timestamp: new Date().toISOString(),
+        policy: {
+          policyId: 'POL-004',
+          rule: 'PURPOSE_MISMATCH'
+        }
+      };
+
+      await Violation.updateOne({ violationId }, { $set: violationDoc }, { upsert: true });
+      detectedViolations.push(violationDoc);
+      consentFindings.push(violationDoc);
+      if (io) io.emit('NEW_VIOLATION', violationDoc);
+    }
+
+    // -------------------------------------------------------------------------
+    // RULE 4: Data Retention Exceeded (DPDPA Sec 8(7))
+    // -------------------------------------------------------------------------
+    const retentionBreachEvents = events.filter(evt => {
+      const ageDays = Math.floor((Date.now() - new Date(evt.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+      return evt.eventType === 'MARKETING_PROCESSING' && ageDays > 365;
+    });
+
+    if (retentionBreachEvents.length > 0) {
+      const violationId = 'VIO-RETENTION-MARKETING-EXCEEDED';
+      const sampleEvt = retentionBreachEvents[0];
+      const ageDays = Math.floor((Date.now() - new Date(sampleEvt.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+      const violationDoc = {
+        violationId,
+        organizationId: 'ORG-001',
+        applicationId: 'APP-DEMOAPP',
+        eventId: sampleEvt.eventId || `EVT-${Date.now()}`,
+        policyId: 'POL-005',
+        type: 'RETENTION_VIOLATION',
+        severity: 'MEDIUM',
+        riskScore: 65,
+        service: 'demoapp-storage',
+        source: 'DATABASE',
+        endpoint: '/data-retention',
+        detectedData: ['marketingData'],
+        detectedPII: ['EMAIL'],
+        occurrences: retentionBreachEvents.length,
+        title: `Data Retention Threshold Exceeded (${ageDays} Days vs 365-Day Schedule)`,
+        reason: `Marketing data record is ${ageDays} days old, exceeding declared statutory retention limit of 365 days. DPDPA Section 8(7) requires erasing personal data upon expiry of the specified purpose.`,
+        explanation: 'Historical marketing telemetry remains stored in the active database past the declared 365-day retention schedule.',
+        recommendation: 'Configure an automated database retention TTL policy or periodic purging cron job to erase records older than 365 days.',
+        status: 'OPEN',
+        timestamp: new Date().toISOString(),
+        policy: {
+          policyId: 'POL-005',
+          rule: 'RETENTION_VIOLATION'
+        }
+      };
+
+      await Violation.updateOne({ violationId }, { $set: violationDoc }, { upsert: true });
+      detectedViolations.push(violationDoc);
+      retentionFindings.push(violationDoc);
+      if (io) io.emit('NEW_VIOLATION', violationDoc);
+    }
+
+    // 2. Compute holistic compliance score
+    const hasNotice = Boolean(policy?.itemizedPurposes?.length > 0);
+    const hasRights = Boolean(users.length > 0); // DemoApp provides active rights portal
+
+    const complianceScore = calculateComplianceScore({
+      hasNotice,
+      hasRights,
+      logFindings,
+      purposeFindings,
+      consentFindings,
+      retentionFindings
+    });
+
+    // 3. Log Audit Trail
     await AuditLog.create({
       action: 'TARGET_AUDIT_COMPLETED',
       entity: 'AuditScan',
@@ -212,13 +316,10 @@ const scanTargetApp = async (req, res) => {
         target: 'DemoApp',
         scannedLogs: logs.length,
         scannedEvents: events.length,
-        violationsFound: detectedViolations.length
+        distinctViolations: detectedViolations.length,
+        complianceScore
       }
     });
-
-    // 3. Compute overall compliance score
-    const totalOpen = await Violation.countDocuments({ status: 'OPEN' });
-    const complianceScore = Math.max(0, 100 - (totalOpen * 3));
 
     return res.status(200).json({
       success: true,
@@ -251,7 +352,14 @@ const exportAuditReport = async (req, res) => {
     const medium = violations.filter(v => v.severity === 'MEDIUM').length;
     const low = violations.filter(v => v.severity === 'LOW').length;
 
-    const complianceScore = Math.max(0, 100 - (totalOpen * 3));
+    const complianceScore = calculateComplianceScore({
+      hasNotice: true,
+      hasRights: true,
+      logFindings: violations.filter(v => v.source === 'APPLICATION_LOG'),
+      purposeFindings: violations.filter(v => v.type === 'PURPOSE_MISMATCH'),
+      consentFindings: violations.filter(v => v.title?.includes('Consent')),
+      retentionFindings: violations.filter(v => v.type === 'RETENTION_VIOLATION')
+    });
 
     const report = {
       title: 'Digital Personal Data Protection Act (DPDPA) Compliance Audit Report',
@@ -277,7 +385,8 @@ const exportAuditReport = async (req, res) => {
         observedEvidence: {
           source: v.source,
           endpoint: v.endpoint,
-          detectedData: v.detectedData || v.detectedPII
+          detectedData: v.detectedData || v.detectedPII,
+          occurrences: v.occurrences || 1
         },
         explainableReason: v.reason,
         aiExplanation: v.explanation || v.aiExplanation,
@@ -294,5 +403,6 @@ const exportAuditReport = async (req, res) => {
 
 module.exports = {
   scanTargetApp,
-  exportAuditReport
+  exportAuditReport,
+  calculateComplianceScore
 };

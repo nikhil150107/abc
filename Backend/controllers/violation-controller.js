@@ -63,7 +63,7 @@ const getViolationById = async (req, res) => {
 // GET /api/violations/stats/summary — dashboard overview
 const getStats = async (req, res) => {
   try {
-    const [total, critical, high, medium, low, open, totalEvents] = await Promise.all([
+    const [total, critical, high, medium, low, open, totalEvents, openViolations] = await Promise.all([
       Violation.countDocuments(),
       Violation.countDocuments({ severity: 'CRITICAL' }),
       Violation.countDocuments({ severity: 'HIGH' }),
@@ -71,11 +71,28 @@ const getStats = async (req, res) => {
       Violation.countDocuments({ severity: 'LOW' }),
       Violation.countDocuments({ status: 'OPEN' }),
       Event.countDocuments(),
+      Violation.find({ status: 'OPEN' }),
     ]);
 
-    // Weighted compliance score
-    const deductions = (critical * 12) + (high * 6) + (medium * 3) + (low * 1);
-    const complianceScore = Math.max(0, Math.min(100, 100 - deductions));
+    // DPDPA 5-Pillar Statutory Compliance Scoring
+    let complianceScore = 100;
+    if (openViolations.length > 0) {
+      const hasCriticalLog = openViolations.some(v => v.source === 'APPLICATION_LOG' && v.severity === 'CRITICAL');
+      const hasHighLog     = openViolations.some(v => v.source === 'APPLICATION_LOG' && v.severity === 'HIGH');
+      const purposeCount   = openViolations.filter(v => v.type === 'PURPOSE_MISMATCH').length;
+      const retentionCount = openViolations.filter(v => v.type === 'RETENTION_VIOLATION').length;
+      const consentBreach  = openViolations.some(v => v.title?.toLowerCase().includes('consent'));
+
+      let deductions = 0;
+      if (hasCriticalLog) deductions += 20;
+      else if (hasHighLog) deductions += 10;
+
+      if (purposeCount > 0) deductions += Math.min(20, purposeCount * 5);
+      if (consentBreach) deductions += 15;
+      if (retentionCount > 0) deductions += 10;
+
+      complianceScore = Math.max(0, 100 - deductions);
+    }
 
     res.json({
       success: true,
