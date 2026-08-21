@@ -1,4 +1,5 @@
 const Event = require('../models/Event');
+const { processEvent } = require('../../Member 3');
 
 // POST /api/events — Member 2 sends normalized events here
 const createEvent = async (req, res) => {
@@ -8,7 +9,23 @@ const createEvent = async (req, res) => {
     const io = req.app.get('io');
     if (io) io.emit('NEW_EVENT', event);
 
-    res.status(201).json({ success: true, data: event });
+    // Member 3 Core Intelligence Pipeline (Policy -> Violation -> Risk -> AI)
+    let violations = [];
+    try {
+      violations = await processEvent(event.toObject ? event.toObject() : event);
+      if (violations && violations.length > 0 && io) {
+        violations.forEach((v) => io.emit('NEW_VIOLATION', v));
+      }
+    } catch (complianceErr) {
+      console.warn('[event-controller] Member 3 processing warning:', complianceErr.message);
+    }
+
+    res.status(201).json({
+      success: true,
+      data: event,
+      violationsCount: violations.length,
+      violations: violations,
+    });
   } catch (err) {
     if (err.code === 11000) {
       return res.status(409).json({ success: false, message: 'Event already exists' });
