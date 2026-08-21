@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { io } from "socket.io-client";
 import axios from "axios";
+import AuditReportModal from "../components/AuditReportModal";
+import { generateAuditReportPDF } from "../utils/pdfGenerator";
 
 const API = "http://localhost:5000";
 
@@ -49,6 +51,8 @@ export default function Dashboard() {
   const [scanning, setScanning]       = useState(false);
   const [scanResult, setScanResult]   = useState(null);
   const [clearing, setClearing]       = useState(false);
+  const [reportModal, setReportModal] = useState(null);
+  const [generatingPDF, setGeneratingPDF] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -95,15 +99,25 @@ export default function Dashboard() {
   const exportReport = async () => {
     try {
       const res = await axios.get(`${API}/api/audit/report`);
-      const blob = new Blob([JSON.stringify(res.data.report, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `DPDPA_Compliance_Audit_Report_${Date.now()}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
+      if (res.data?.report) {
+        setReportModal(res.data.report);
+      }
     } catch (err) {
       alert(`Export failed: ${err.message}`);
+    }
+  };
+
+  const downloadPDFDirectly = async () => {
+    setGeneratingPDF(true);
+    try {
+      const res = await axios.get(`${API}/api/audit/report`);
+      if (res.data?.report) {
+        generateAuditReportPDF({ report: res.data.report });
+      }
+    } catch (err) {
+      alert(`PDF export failed: ${err.message}`);
+    } finally {
+      setGeneratingPDF(false);
     }
   };
 
@@ -231,10 +245,18 @@ export default function Dashboard() {
               </button>
               <button
                 className="btn btn-secondary"
+                onClick={downloadPDFDirectly}
+                disabled={generatingPDF}
+                style={{ padding: "10px 18px", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "6px", background: "#EEF2FF", color: "#4F46E5", borderColor: "#C7D2FE", fontWeight: "600" }}
+              >
+                {generatingPDF ? "⏳ Generating PDF..." : "📥 Download Audit PDF"}
+              </button>
+              <button
+                className="btn btn-secondary"
                 onClick={exportReport}
                 style={{ padding: "10px 18px", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "6px" }}
               >
-                📄 Export Audit Report
+                📄 View Audit Report
               </button>
               <button
                 className="btn btn-secondary"
@@ -242,7 +264,7 @@ export default function Dashboard() {
                 disabled={clearing}
                 style={{ padding: "10px 18px", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "6px", color: "var(--danger)", borderColor: "#FCA5A5" }}
               >
-                {clearing ? "Clearing..." : "🗑 Reset Dashboard Data"}
+                {clearing ? "Clearing..." : "🗑 Reset Data"}
               </button>
             </div>
           </div>
@@ -411,6 +433,11 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* AUDIT REPORT PREVIEW & PRINT MODAL */}
+      {reportModal && (
+        <AuditReportModal report={reportModal} onClose={() => setReportModal(null)} />
       )}
     </div>
   );
