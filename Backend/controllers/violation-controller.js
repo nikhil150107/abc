@@ -1,10 +1,14 @@
 const Violation = require('../models/Violation');
+const Event     = require('../models/Event');
 const AuditLog  = require('../models/AuditLog');
 
 // POST /api/violations — Member 3 sends violation here
 const createViolation = async (req, res) => {
   try {
-    const data = req.body;
+    const data = {
+      ...req.body,
+      timestamp: req.body.timestamp ? new Date(req.body.timestamp) : new Date()
+    };
     const violation = await Violation.create(data);
 
     await AuditLog.create({
@@ -59,26 +63,47 @@ const getViolationById = async (req, res) => {
 // GET /api/violations/stats/summary — dashboard overview
 const getStats = async (req, res) => {
   try {
-    const [total, high, medium, low, open] = await Promise.all([
+    const [total, critical, high, medium, low, open, totalEvents] = await Promise.all([
       Violation.countDocuments(),
+      Violation.countDocuments({ severity: 'CRITICAL' }),
       Violation.countDocuments({ severity: 'HIGH' }),
       Violation.countDocuments({ severity: 'MEDIUM' }),
       Violation.countDocuments({ severity: 'LOW' }),
       Violation.countDocuments({ status: 'OPEN' }),
+      Event.countDocuments(),
     ]);
 
-    const totalEvents = await require('../models/Event').countDocuments();
-
-    // Simple compliance score: 100 - (open violations * 2), min 0
-    const complianceScore = Math.max(0, 100 - open * 2);
+    // Weighted compliance score
+    const deductions = (critical * 12) + (high * 6) + (medium * 3) + (low * 1);
+    const complianceScore = Math.max(0, Math.min(100, 100 - deductions));
 
     res.json({
       success: true,
-      data: { total, high, medium, low, open, totalEvents, complianceScore },
+      data: { total, critical, high, medium, low, open, totalEvents, complianceScore },
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
 
-module.exports = { createViolation, getViolations, getViolationById, getStats };
+// DELETE /api/violations/reset/all — clears all data for a fresh real-time run
+const resetAllData = async (req, res) => {
+  try {
+    await Promise.all([
+      Violation.deleteMany({}),
+      Event.deleteMany({}),
+      AuditLog.deleteMany({})
+    ]);
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('DATA_RESET', { timestamp: new Date().toISOString() });
+    }
+
+    res.json({ success: true, message: 'PrivGuard database cleared successfully. Ready for fresh real-time DemoApp telemetry.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+module.exports = { createViolation, getViolations, getViolationById, getStats, resetAllData };

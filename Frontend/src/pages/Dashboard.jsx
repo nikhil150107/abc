@@ -28,16 +28,19 @@ function ComplianceRing({ score }) {
 }
 
 function timeAgo(ts) {
-  const diff = Math.floor((Date.now() - new Date(ts)) / 1000);
+  if (!ts) return "Just now";
+  const diff = Math.floor((Date.now() - new Date(ts).getTime()) / 1000);
+  if (diff <= 5 || diff < 0) return "Just now";
   if (diff < 60)   return `${diff}s ago`;
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  return `${Math.floor(diff / 3600)}h ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
 }
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [stats, setStats]           = useState({ total: 0, high: 0, medium: 0, low: 0, open: 0, totalEvents: 0, complianceScore: 100 });
+  const [stats, setStats]           = useState({ total: 0, critical: 0, high: 0, medium: 0, low: 0, open: 0, totalEvents: 0, complianceScore: 100 });
   const [violations, setViolations] = useState([]);
   const [liveEvents, setLiveEvents] = useState([]);
   const [selected, setSelected]     = useState(null);
@@ -45,6 +48,7 @@ export default function Dashboard() {
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [scanning, setScanning]       = useState(false);
   const [scanResult, setScanResult]   = useState(null);
+  const [clearing, setClearing]       = useState(false);
 
   const fetchData = async () => {
     try {
@@ -72,6 +76,22 @@ export default function Dashboard() {
     }
   };
 
+  const clearData = async () => {
+    if (!window.confirm("Clear all current violations and events for a fresh real-time run?")) return;
+    setClearing(true);
+    try {
+      await axios.delete(`${API}/api/violations/reset/all`);
+      setViolations([]);
+      setLiveEvents([]);
+      setScanResult(null);
+      await fetchData();
+    } catch (err) {
+      alert(`Clear failed: ${err.message}`);
+    } finally {
+      setClearing(false);
+    }
+  };
+
   const exportReport = async () => {
     try {
       const res = await axios.get(`${API}/api/audit/report`);
@@ -92,10 +112,10 @@ export default function Dashboard() {
     const socket = io(API);
 
     socket.on("NEW_VIOLATION", (v) => {
-      setViolations(prev => [v, ...prev.slice(0, 19)]);
+      setViolations(prev => [v, ...prev.slice(0, 49)]);
       setLiveEvents(prev => [{
-        time: new Date(v.timestamp).toLocaleTimeString(),
-        msg: `Violation — ${v.type.replace(/_/g, " ")}`,
+        time: new Date(v.timestamp || Date.now()).toLocaleTimeString(),
+        msg: `Violation — ${v.type.replace(/_/g, " ")} (${v.severity})`,
         tag: "violation",
       }, ...prev.slice(0, 49)]);
       fetchData();
@@ -103,11 +123,18 @@ export default function Dashboard() {
 
     socket.on("NEW_EVENT", (e) => {
       setLiveEvents(prev => [{
-        time: new Date(e.timestamp).toLocaleTimeString(),
+        time: new Date(e.timestamp || Date.now()).toLocaleTimeString(),
         msg: `${e.type.replace(/_/g, " ")} · ${e.endpoint || e.service || ""}`,
         tag: "event",
       }, ...prev.slice(0, 49)]);
+      fetchData();
       setLastUpdated(new Date());
+    });
+
+    socket.on("DATA_RESET", () => {
+      setViolations([]);
+      setLiveEvents([]);
+      fetchData();
     });
 
     return () => socket.disconnect();
@@ -193,7 +220,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div style={{ display: "flex", gap: "10px" }}>
+            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
               <button
                 className="btn btn-primary"
                 onClick={runScan}
@@ -208,6 +235,14 @@ export default function Dashboard() {
                 style={{ padding: "10px 18px", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "6px" }}
               >
                 📄 Export Audit Report
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={clearData}
+                disabled={clearing}
+                style={{ padding: "10px 18px", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "6px", color: "var(--danger)", borderColor: "#FCA5A5" }}
+              >
+                {clearing ? "Clearing..." : "🗑 Reset Dashboard Data"}
               </button>
             </div>
           </div>
