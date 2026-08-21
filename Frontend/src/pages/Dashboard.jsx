@@ -39,6 +39,157 @@ function timeAgo(ts) {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
+const formatRuleName = (rule) => {
+  if (!rule) return "—";
+  return rule
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .split(" ")
+    .map(word => {
+      if (["pan", "kyc", "pii", "otp", "aadhaar"].includes(word)) {
+        return word.toUpperCase();
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
+    .join(" ");
+};
+
+const formatViolationType = (type) => {
+  if (!type) return "Compliance Violation";
+  switch (type) {
+    case "PII_EXPOSURE": return "PII Exposure";
+    case "PURPOSE_MISMATCH": return "Purpose Mismatch";
+    case "RETENTION_VIOLATION": return "Retention Violation";
+    default:
+      return type
+        .replace(/_/g, " ")
+        .toLowerCase()
+        .replace(/\b\w/g, c => c.toUpperCase());
+  }
+};
+
+const formatServiceName = (srv) => {
+  if (!srv) return "—";
+  return srv
+    .replace(/-/g, " ")
+    .toLowerCase()
+    .split(" ")
+    .map(word => {
+      if (word === "demoapp") return "DemoApp";
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
+    .join(" ");
+};
+
+const formatStatus = (status) => {
+  if (!status) return "—";
+  return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+};
+
+const formatLiveActivity = (item) => {
+  if (!item) return null;
+  const isViolation = item.tag === "violation" || Boolean(item.severity) || Boolean(item.violationId);
+
+  if (isViolation) {
+    const sev = (item.severity || "HIGH").toUpperCase();
+    const sevColorMap = {
+      CRITICAL: { bg: "#FAF5FF", border: "#7E22CE", badgeBg: "#F3E8FF", text: "#7E22CE" },
+      HIGH:     { bg: "#FEF2F2", border: "#DC2626", badgeBg: "#FEE2E2", text: "#DC2626" },
+      MEDIUM:   { bg: "#FFFBEB", border: "#D97706", badgeBg: "#FEF3C7", text: "#D97706" },
+      LOW:      { bg: "#F0FDF4", border: "#166534", badgeBg: "#DCFCE7", text: "#166534" },
+    };
+    const c = sevColorMap[sev] || sevColorMap.HIGH;
+    return {
+      id: item.violationId || item._id || Math.random().toString(),
+      time: timeAgo(item.timestamp || item.time || Date.now()),
+      rawTime: new Date(item.timestamp || item.time || Date.now()).toLocaleTimeString(),
+      badgeText: `${sev} VIOLATION`,
+      badgeBg: c.badgeBg,
+      badgeColor: c.text,
+      borderColor: c.border,
+      title: item.title || formatViolationType(item.type || "VIOLATION"),
+      subtitle: item.reason || (item.endpoint ? `Endpoint: ${item.endpoint} · ${item.detectedPII?.join(", ") || "PII Exposure"}` : "Non-compliance discrepancy detected"),
+      isViolation: true,
+      raw: item
+    };
+  }
+
+  // Regular processing event
+  const type = (item.type || item.eventType || "DATA_PROCESSING").toUpperCase();
+  let badgeText = "TELEMETRY";
+  let badgeColor = "#4F46E5";
+  let badgeBg = "#EEF2FF";
+  let borderColor = "#6366F1";
+  let title = formatViolationType(type);
+  let subtitle = item.endpoint ? `Endpoint: ${item.endpoint}` : "Personal data processed under declared scope";
+
+  if (type === "USER_LOGIN") {
+    badgeText = "AUTH";
+    badgeColor = "#4F46E5";
+    badgeBg = "#EEF2FF";
+    borderColor = "#4F46E5";
+    title = "User Authentication";
+    subtitle = "Session token generated · Scope: Account Access";
+  } else if (type === "USER_REGISTERED" || type === "USER_REGISTERED_SIMULATION") {
+    badgeText = "ACCOUNT";
+    badgeColor = "#059669";
+    badgeBg = "#ECFDF5";
+    borderColor = "#059669";
+    title = "User Registration";
+    subtitle = "Personal identity created · Name, Email, Mobile";
+  } else if (type.includes("PROFILE")) {
+    badgeText = "PROFILE";
+    badgeColor = "#0284C7";
+    badgeBg = "#E0F2FE";
+    borderColor = "#0284C7";
+    title = type.includes("UPDATED") ? "Profile Updated" : "Profile Accessed";
+    subtitle = "Customer profile retrieved · /api/users/profile";
+  } else if (type === "ORDER_CREATED") {
+    badgeText = "COMMERCE";
+    badgeColor = "#2563EB";
+    badgeBg = "#EFF6FF";
+    borderColor = "#2563EB";
+    title = "Customer Order Placed";
+    subtitle = "Commercial transaction recorded · Purpose: Fulfillment";
+  } else if (type.includes("CONSENT")) {
+    const isGranted = type.includes("GRANTED");
+    badgeText = "CONSENT";
+    badgeColor = isGranted ? "#059669" : "#D97706";
+    badgeBg = isGranted ? "#ECFDF5" : "#FFFBEB";
+    borderColor = isGranted ? "#059669" : "#D97706";
+    title = isGranted ? "Consent Granted" : "Consent Revoked / Rejected";
+    subtitle = `DPDPA Section 6 authorization updated · Purpose: ${item.purpose || 'Service'}`;
+  } else if (type.includes("MARKETING")) {
+    badgeText = "MARKETING";
+    badgeColor = "#9333EA";
+    badgeBg = "#FAF5FF";
+    borderColor = "#9333EA";
+    title = "Marketing Telemetry";
+    subtitle = "Promotional processing event dispatched";
+  } else if (type.includes("KYC")) {
+    badgeText = "KYC";
+    badgeColor = "#DC2626";
+    badgeBg = "#FEF2F2";
+    borderColor = "#DC2626";
+    title = "Sensitive KYC Identifier";
+    subtitle = "PAN / Identity verification stream · DPDPA Section 8";
+  }
+
+  return {
+    id: item.eventId || item._id || Math.random().toString(),
+    time: timeAgo(item.timestamp || item.createdAt || Date.now()),
+    rawTime: new Date(item.timestamp || item.createdAt || Date.now()).toLocaleTimeString(),
+    badgeText,
+    badgeBg,
+    badgeColor,
+    borderColor,
+    title,
+    subtitle,
+    isViolation: false,
+    raw: item
+  };
+};
+
 export default function Dashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -56,12 +207,17 @@ export default function Dashboard() {
 
   const fetchData = async () => {
     try {
-      const [s, v] = await Promise.all([
+      const [s, v, e] = await Promise.all([
         axios.get(`${API}/api/violations/stats/summary`),
         axios.get(`${API}/api/violations?limit=50`),
+        axios.get(`${API}/api/events?limit=25`).catch(() => ({ data: { data: [] } })),
       ]);
       setStats(s.data.data);
       setViolations(v.data.data);
+      if (e.data?.data && e.data.data.length > 0) {
+        const formatted = e.data.data.map(formatLiveActivity).filter(Boolean);
+        setLiveEvents(formatted);
+      }
       setLastUpdated(new Date());
     } catch (_) {}
   };
@@ -127,20 +283,18 @@ export default function Dashboard() {
 
     socket.on("NEW_VIOLATION", (v) => {
       setViolations(prev => [v, ...prev.slice(0, 49)]);
-      setLiveEvents(prev => [{
-        time: new Date(v.timestamp || Date.now()).toLocaleTimeString(),
-        msg: `Violation — ${v.type.replace(/_/g, " ")} (${v.severity})`,
-        tag: "violation",
-      }, ...prev.slice(0, 49)]);
+      const formatted = formatLiveActivity({ ...v, tag: "violation" });
+      if (formatted) {
+        setLiveEvents(prev => [formatted, ...prev.slice(0, 49)]);
+      }
       fetchData();
     });
 
     socket.on("NEW_EVENT", (e) => {
-      setLiveEvents(prev => [{
-        time: new Date(e.timestamp || Date.now()).toLocaleTimeString(),
-        msg: `${e.type.replace(/_/g, " ")} · ${e.endpoint || e.service || ""}`,
-        tag: "event",
-      }, ...prev.slice(0, 49)]);
+      const formatted = formatLiveActivity(e);
+      if (formatted) {
+        setLiveEvents(prev => [formatted, ...prev.slice(0, 49)]);
+      }
       fetchData();
       setLastUpdated(new Date());
     });
@@ -327,15 +481,32 @@ export default function Dashboard() {
             <div className="pg-panel">
               <div className="pg-panel-header">
                 <span className="pg-panel-title">Live Activity</span>
-                <span style={{ fontSize: 11, color: "var(--success)", fontWeight: 500 }}>● Live</span>
+                <span style={{ fontSize: 11, color: "var(--success)", fontWeight: 600, display: "flex", alignItems: "center", gap: 5 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--success)" }} />
+                  Live Stream
+                </span>
               </div>
               <div className="live-feed">
-                {liveEvents.length === 0 && <div className="live-empty">Waiting for events…</div>}
-                {liveEvents.map((e, i) => (
-                  <div key={i} className={`live-item live-${e.tag}`}>
-                    <div className="live-dot" style={{ background: e.tag === "violation" ? "var(--danger)" : "var(--indigo)" }} />
-                    <span className="live-time">{e.time}</span>
-                    <span className="live-msg">{e.msg}</span>
+                {liveEvents.length === 0 && <div className="live-empty">Waiting for live events from DemoApp…</div>}
+                {liveEvents.map((e, idx) => (
+                  <div
+                    key={e.id || idx}
+                    className="live-activity-item"
+                    style={{ borderLeft: `3.5px solid ${e.borderColor || "var(--indigo)"}`, cursor: e.isViolation ? "pointer" : "default" }}
+                    onClick={() => e.isViolation && setSelected(e.raw)}
+                    title={e.isViolation ? "Click to view violation details" : undefined}
+                  >
+                    <div className="live-activity-top">
+                      <span
+                        className="live-activity-badge"
+                        style={{ background: e.badgeBg || "#EEF2FF", color: e.badgeColor || "#4F46E5" }}
+                      >
+                        {e.badgeText || "EVENT"}
+                      </span>
+                      <span className="live-activity-title">{e.title}</span>
+                      <span className="live-activity-time">{e.time}</span>
+                    </div>
+                    <div className="live-activity-sub">{e.subtitle}</div>
                   </div>
                 ))}
               </div>
