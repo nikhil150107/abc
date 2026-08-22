@@ -17,10 +17,71 @@ function generateViolationId() {
 }
 
 /**
+ * Infers the precise database table, origin subsystem, and component for any violation.
+ */
+function inferBreachLocation(event = {}, piiList = [], policy = {}) {
+  const endpoint = event.endpoint || '/api';
+  const source = event.source || 'APPLICATION_API';
+  const service = event.service || 'demoapp-core';
+  const rule = String(policy.rule || policy.type || '').toUpperCase();
+
+  let table = 'data_processing_events';
+  let originType = 'API_ENDPOINT';
+  let component = `${service} Backend`;
+  let handler = 'Express Route Handler';
+  let columns = piiList.length > 0 ? piiList : ['personal_data'];
+
+  const ep = endpoint.toLowerCase();
+  if (ep.includes('order') || ep.includes('checkout') || ep.includes('cart')) {
+    table = 'orders, order_items';
+    originType = 'DATABASE_TABLE';
+    component = 'Order Processing Engine & MySQL Orders Table';
+    handler = 'productOrderController.js:createOrder';
+    columns = ['shippingAddress', 'shippingCity', 'mobileNumber', ...piiList];
+  } else if (ep.includes('user') || ep.includes('profile') || ep.includes('register') || ep.includes('auth') || ep.includes('login')) {
+    table = 'users';
+    originType = source === 'APPLICATION_LOG' ? 'APPLICATION_LOG' : 'DATABASE_TABLE';
+    component = 'User Identity & Authentication Module (MySQL: users)';
+    handler = 'userController.js';
+    columns = ['fullName', 'email', 'mobileNumber', 'dateOfBirth', 'address', ...piiList];
+  } else if (ep.includes('consent')) {
+    table = 'consents, consent_history';
+    originType = 'CONSENT_STORE';
+    component = 'Consent Lifecycle Management Service (MySQL: consents)';
+    handler = 'consentController.js';
+    columns = ['purpose', 'status', 'withdrawnAt', ...piiList];
+  } else if (source === 'APPLICATION_LOG' || ep.includes('log')) {
+    table = 'application_audit_logs';
+    originType = 'APPLICATION_LOG';
+    component = 'Application Server Log Engine (MySQL: application_audit_logs)';
+    handler = 'logger.js';
+    columns = ['message', 'rawLogData', ...piiList];
+  } else if (rule.includes('RETENTION') || ep.includes('retention')) {
+    table = 'data_processing_events';
+    originType = 'DATABASE_TABLE';
+    component = 'Historical Data Storage Engine (MySQL: data_processing_events)';
+    handler = 'MySQL Database Storage';
+    columns = ['createdAt', 'dataFields', 'purpose'];
+  }
+
+  return {
+    originType,
+    table,
+    columns: [...new Set(columns)],
+    endpoint,
+    component,
+    handler,
+    codeReference: `${service} -> ${handler} (Target Table: \`${table}\`)`
+  };
+}
+
+/**
  * Constructs a standardized violation object prior to persistence and AI enrichment.
  */
 function createViolationObject({ event, policy, riskScore, detectedData, title, reason, aiResult = {} }) {
   const piiList = detectedData || event.detectedPII || [];
+  const breachLocation = event.breachLocation || inferBreachLocation(event, piiList, policy);
+
   return {
     violationId: generateViolationId(),
     organizationId: event.organizationId || "ORG-001",
@@ -35,6 +96,7 @@ function createViolationObject({ event, policy, riskScore, detectedData, title, 
     endpoint: event.endpoint || null,
     detectedData: piiList,
     detectedPII: piiList,
+    breachLocation,
     title: title,
     reason: reason,
     aiExplanation: aiResult.explanation || "",
@@ -75,6 +137,7 @@ function formatViolationOutput(doc) {
     endpoint: raw.endpoint || null,
     detectedData: piiList,
     detectedPII: piiList,
+    breachLocation: raw.breachLocation || inferBreachLocation(raw, piiList, raw.policy || {}),
     title: raw.title || "Compliance Policy Violation",
     reason: raw.reason || "DPDPA compliance policy condition triggered",
     aiExplanation: expText,

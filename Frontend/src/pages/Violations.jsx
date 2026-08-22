@@ -161,8 +161,8 @@ export default function Violations() {
                 <tr>
                   <th>Severity</th>
                   <th>Finding</th>
+                  <th>Database Table / Origin</th>
                   <th>Type</th>
-                  <th>Source</th>
                   <th>Endpoint</th>
                   <th>Risk</th>
                   <th>Status</th>
@@ -188,8 +188,12 @@ export default function Violations() {
                           <span className="ds-badge ds-badge-neutral" style={{ marginLeft: 8 }}>{v.occurrences}x</span>
                         )}
                       </td>
+                      <td>
+                        <code style={{ background: 'var(--bg-tertiary)', color: '#38bdf8', padding: '3px 6px', borderRadius: '4px', fontSize: '11px', fontWeight: 600 }}>
+                          {v.breachLocation?.table || (v.source === 'APPLICATION_LOG' ? 'application_audit_logs' : 'data_processing_events')}
+                        </code>
+                      </td>
                       <td>{v.type}</td>
-                      <td>{v.source || 'Application Log'}</td>
                       <td><code style={{ background: 'var(--bg-tertiary)', padding: '2px 6px', borderRadius: '4px', fontSize: '11px' }}>{v.endpoint || v.service || '—'}</code></td>
                       <td style={{ fontWeight: 500 }}>{v.riskScore}</td>
                       <td>{v.status}</td>

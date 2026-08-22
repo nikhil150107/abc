@@ -13,6 +13,15 @@ const violationSchema = new mongoose.Schema({
   endpoint:    { type: String },
   detectedPII:  [{ type: String }],
   detectedData: [{ type: String }],
+  breachLocation: {
+    originType:    { type: String }, // DATABASE_TABLE, APPLICATION_LOG, API_ENDPOINT, CONSENT_STORE
+    table:         { type: String }, // e.g. users, application_audit_logs, orders, data_processing_events
+    columns:       [{ type: String }], // e.g. ['shippingAddress', 'mobileNumber']
+    endpoint:      { type: String },
+    handler:       { type: String },
+    component:     { type: String },
+    codeReference: { type: String },
+  },
   evidence:     { type: mongoose.Schema.Types.Mixed, default: {} },
   occurrences:  { type: Number, default: 1 },
   policy: {

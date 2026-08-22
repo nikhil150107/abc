@@ -276,16 +276,23 @@ export function generateAuditReportPDF(reportData) {
 
     y += 11;
 
-    // Observed Evidence Metadata Table
+    // Observed Evidence & Exact Breach Location Table
     const ev = finding.observedEvidence || {};
-    const evText = `Endpoint: ${ev.endpoint || 'Internal'}  |  Source: ${ev.source || 'Application'}  |  PII Involved: ${(ev.detectedData || []).join(', ') || 'Personal Data'}  |  Occurrences: ${ev.occurrences || 1}x`;
+    const tableOrigin = ev.table || (ev.source === 'APPLICATION_LOG' ? 'application_audit_logs' : 'data_processing_events');
+    const cols = (Array.isArray(ev.columns) && ev.columns.length > 0) ? ev.columns.join(', ') : (ev.detectedData || []).join(', ') || 'Personal Data';
 
-    doc.setTextColor(...TEXT_MUTED);
+    doc.setTextColor(...NAVY);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7);
-    doc.text('Observed Telemetry:', margin + 3, y);
+    doc.setFontSize(7.5);
+    doc.text('EXACT BREACH LOCATION & DATABASE ORIGIN:', margin + 3, y);
+    y += 3.5;
+
+    doc.setTextColor(...TEXT_DARK);
     doc.setFont('helvetica', 'normal');
-    doc.text(evText, margin + 30, y);
+    doc.setFontSize(7);
+    doc.text(`• Target Database Table: ${tableOrigin}   |   Columns / Fields: ${cols}`, margin + 5, y);
+    y += 3.2;
+    doc.text(`• Origin Type: ${ev.originType || ev.source || 'DATABASE_TABLE'}   |   Endpoint: ${ev.endpoint || 'Internal'}   |   Occurrences: ${ev.occurrences || 1}x`, margin + 5, y);
     y += 4.5;
 
     // POINT A: Reason for Data Breach (Bold Heading & Structured Points)
