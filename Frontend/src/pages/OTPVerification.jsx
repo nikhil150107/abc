@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { apiRequest } from "../api/api";
 
 export default function OTPVerification() {
-  const [email, setEmail]       = useState("");
+  const location = useLocation();
+  const [email, setEmail]       = useState(location.state?.email || "");
   const [digits, setDigits]     = useState(Array(6).fill(""));
   const [error, setError]       = useState("");
   const [loading, setLoading]   = useState(false);
@@ -89,15 +90,17 @@ export default function OTPVerification() {
         ) : (
           <>
             <h1 className="ds-heading-1 ds-mb-sm">Verify your email</h1>
-            <p className="ds-text-body ds-mb-lg">We sent a 6-digit code to your email address.</p>
+            <p className="ds-text-body ds-mb-lg">We sent a 6-digit code to <b>{email || "your email"}</b>.</p>
 
             {error && <div className="ds-alert ds-alert-error ds-mb-md">{error}</div>}
 
-            <div className="ds-form-group">
-              <label className="ds-label">Email</label>
-              <input className="ds-input" type="email" placeholder="name@company.com"
-                value={email} onChange={e => setEmail(e.target.value)} required />
-            </div>
+            {!email && (
+              <div className="ds-form-group">
+                <label className="ds-label">Email</label>
+                <input className="ds-input" type="email" placeholder="name@company.com"
+                  value={email} onChange={e => setEmail(e.target.value)} required />
+              </div>
+            )}
 
             <p className="ds-text-small ds-font-medium ds-mb-sm">Enter the code below</p>
 

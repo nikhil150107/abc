@@ -17,7 +17,7 @@ export default function Register() {
     setLoading(true);
     try {
       await apiRequest("/auth/register", "POST", formData);
-      navigate("/verify-otp");
+      navigate("/verify-otp", { state: { email: formData.email } });
     } catch (err) {
       setError(err.message);
     } finally {
