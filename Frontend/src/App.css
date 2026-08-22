@@ -250,15 +250,42 @@
   border-radius: 50%;
 }
 
-.ds-badge-critical { color: var(--text-primary); border-left: 2px solid var(--color-critical); }
+.ds-badge-critical {
+  color: var(--color-critical);
+  background-color: var(--bg-critical);
+  border-color: var(--color-critical);
+}
 .ds-badge-critical::before { background-color: var(--color-critical); }
 
+.ds-badge-high {
+  color: var(--color-high);
+  background-color: var(--bg-high);
+  border-color: var(--color-high);
+}
 .ds-badge-high::before { background-color: var(--color-high); }
+
+.ds-badge-medium {
+  color: var(--color-medium);
+  background-color: var(--bg-medium);
+  border-color: var(--color-medium);
+}
 .ds-badge-medium::before { background-color: var(--color-medium); }
+
+.ds-badge-low {
+  color: var(--color-low);
+  background-color: var(--bg-low);
+  border-color: var(--color-low);
+}
 .ds-badge-low::before { background-color: var(--color-low); }
+
+.ds-badge-compliant {
+  color: var(--color-compliant);
+  background-color: var(--bg-compliant);
+  border-color: var(--color-compliant);
+}
 .ds-badge-compliant::before { background-color: var(--color-compliant); }
 
-.ds-badge-neutral { background-color: var(--bg-tertiary); color: var(--text-secondary); gap: 0; }
+.ds-badge-neutral { background-color: var(--bg-tertiary); color: var(--text-secondary); border-color: var(--border-medium); gap: 0; }
 
 /* ─── TABLES ─────────────────────────────────────────── */
 .ds-table-wrapper {
