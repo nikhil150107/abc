@@ -22,8 +22,12 @@ async function getActivePolicies(organizationId) {
   // 1. Direct MongoDB Query
   if (mongoose.connection && mongoose.connection.readyState === 1) {
     const policies = await Policy.find({
-      organizationId,
-      enabled: true,
+      $or: [
+        { organizationId },
+        { organizationId: { $exists: false } },
+        { organizationId: null }
+      ],
+      enabled: { $ne: false },
     }).lean();
 
     if (policies && policies.length > 0) {

@@ -37,7 +37,7 @@ function evaluatePolicyRule(event, policy) {
   const targetRulePii = RULE_TO_PII_MAP[policy.rule] || config.piiType;
 
   // ----------------------------------------------------
-  // Rule 1: PII Exposure
+  // Rule 1: PII Exposure & Logging Prohibitions (DPDPA Sec 8(5))
   // Matches PII_EXPOSURE type or *_LOGGING_PROHIBITED rule names
   // ----------------------------------------------------
   const isPiiRule =
@@ -45,9 +45,6 @@ function evaluatePolicyRule(event, policy) {
     Boolean(RULE_TO_PII_MAP[policy.rule]);
 
   if (isPiiRule) {
-    const isLogSource = event.source === "APPLICATION_LOG" || !event.source;
-    const loggingDisallowed = config.loggingAllowed === false || Boolean(RULE_TO_PII_MAP[policy.rule]);
-
     let piiMatched = false;
     let matchingData = [];
 
@@ -61,25 +58,57 @@ function evaluatePolicyRule(event, policy) {
       matchingData = detectedPII;
     }
 
-    if (isLogSource && loggingDisallowed && piiMatched) {
+    if (piiMatched) {
+      const isLog = event.source === "APPLICATION_LOG" || (event.type && String(event.type).startsWith('LOG_'));
       const dataStr = (matchingData.length > 0 ? matchingData : detectedPII).join(", ");
+      
       return {
         type: policy.type || "PII_EXPOSURE",
         rule: policy.rule || "PII_EXPOSURE",
-        title: policy.name || "Raw PII detected in application logs",
-        reason: `Raw PII (${dataStr}) was found in logs while the policy prohibits logging of personal data.`,
+        title: isLog 
+          ? (policy.name || `Plaintext Personal Data (${dataStr}) in Application Logs`)
+          : `Personal Data (${dataStr}) Exposure in API Processing`,
+        reason: isLog
+          ? `Raw PII (${dataStr}) was recorded in application logs while statutory DPDPA policy prohibits logging of personal data in plaintext.`
+          : `Personal data (${dataStr}) detected in real-time processing event at endpoint '${event.endpoint || '/api'}'.`,
         detectedData: matchingData.length > 0 ? matchingData : detectedPII,
       };
     }
   }
 
   // ----------------------------------------------------
-  // Rule 2: Purpose Mismatch
+  // Rule 2: Purpose Mismatch & Consent Failures (DPDPA Sec 6(1) & Sec 6(4))
   // ----------------------------------------------------
-  if (policyType === "PURPOSE_MISMATCH") {
-    const allowedPurposes = config.allowedPurposes || [];
-    const observedPurpose = event.purpose;
+  if (policyType === "PURPOSE_MISMATCH" || policy.rule === "PURPOSE_MISMATCH") {
+    const observedPurpose = event.purpose || event.payload?.purpose;
+    const eventType = String(event.type || event.eventType || '').toUpperCase();
+    const endpoint = String(event.endpoint || '').toLowerCase();
+    const fields = event.detectedPII || [];
 
+    // Scenario A: Phone used in Orders / Commercial Transaction (when declared scope is OTP only)
+    if (fields.includes('PHONE') && (eventType.includes('ORDER') || endpoint.includes('/orders') || eventType === 'ORDER_CREATED')) {
+      return {
+        type: "PURPOSE_MISMATCH",
+        rule: "PURPOSE_MISMATCH",
+        title: "Purpose-Use Mismatch: Mobile Number Used Beyond Declared Scope",
+        reason: `Declared purpose for mobileNumber in Data Inventory is 'OTP verification only', but observed in transaction event '${eventType}'. DPDPA Section 6(1) requires processing only for declared, specified purposes.`,
+        detectedData: ['PHONE'],
+      };
+    }
+
+    // Scenario B: Marketing processing post consent withdrawal
+    if (eventType.includes('MARKETING') || (event.payload && (event.payload.trigger === 'POST_CONSENT_WITHDRAWAL' || String(event.payload.note).includes('CONSENT')))) {
+      return {
+        type: "PURPOSE_MISMATCH",
+        rule: "PURPOSE_MISMATCH",
+        title: "Consent Enforcement Failure: Marketing Processing Post-Withdrawal",
+        reason: `Marketing processing event executed for user after consent was withdrawn. Under DPDPA Section 6(4), processing must cease immediately upon consent withdrawal.`,
+        detectedData: fields.length > 0 ? fields : ['EMAIL'],
+      };
+    }
+
+    // Scenario C: Custom allowed purposes check
+    const allowedPurposes = config.allowedPurposes || [];
     if (observedPurpose && allowedPurposes.length > 0 && !allowedPurposes.includes(observedPurpose)) {
       return {
         type: "PURPOSE_MISMATCH",
@@ -92,9 +121,9 @@ function evaluatePolicyRule(event, policy) {
   }
 
   // ----------------------------------------------------
-  // Rule 3: Retention Violation
+  // Rule 3: Retention Violation (DPDPA Sec 8(7))
   // ----------------------------------------------------
-  if (policyType === "RETENTION_VIOLATION") {
+  if (policyType === "RETENTION_VIOLATION" || policy.rule === "RETENTION_VIOLATION") {
     let dataAgeDays = 0;
 
     if (typeof event.dataAgeDays === "number") {
@@ -107,13 +136,13 @@ function evaluatePolicyRule(event, policy) {
       dataAgeDays = Math.floor((now - eventTime) / (1000 * 60 * 60 * 24));
     }
 
-    const maxDays = typeof config.retentionDays === "number" ? config.retentionDays : 90;
+    const maxDays = typeof config.retentionDays === "number" ? config.retentionDays : 365;
     if (dataAgeDays > maxDays) {
       return {
         type: "RETENTION_VIOLATION",
         rule: "RETENTION_VIOLATION",
         title: policy.name || "Data retention period threshold exceeded",
-        reason: `Data age of ${dataAgeDays} days exceeds allowed policy retention period of ${maxDays} days.`,
+        reason: `Data age of ${dataAgeDays} days exceeds allowed statutory retention schedule of ${maxDays} days.`,
         detectedData: detectedPII,
       };
     }

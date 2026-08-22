@@ -66,7 +66,10 @@ const createEvent = async (req, res) => {
           ...event.toObject(),
           detectedPII,
           purpose: rawBody.payload?.purpose || rawBody.purpose || event.payload?.purpose,
-          source: rawBody.source || 'APPLICATION_LOG',
+          source: rawBody.source || event.source || 'APPLICATION_API',
+          payload: rawBody.payload || event.payload || {},
+          endpoint: event.endpoint || rawBody.endpoint || '/api',
+          service: event.service || rawBody.service || 'application-core',
           timestamp: timestamp.toISOString(),
           dataAgeDays: rawBody.payload?.dataAgeDays || 0,
         };
