@@ -4,8 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { io } from "socket.io-client";
 import axios from "axios";
 import ViolationModal from "../components/ViolationModal";
-
-const API = "http://localhost:5000";
+import { API_BASE_URL as API } from "../api/api";
 
 function timeAgo(ts) {
   if (!ts) return "Just now";
