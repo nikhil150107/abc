@@ -29,10 +29,6 @@ app.use(cors());
 // Make io accessible in controllers via req.app.get('io')
 app.set('io', io);
 
-// Health Check & Root Endpoints
-app.get('/health', (req, res) => res.json({ status: 'ok', app: 'PrivGuard', version: '1.0.0' }));
-app.get('/', (req, res) => res.json({ status: 'ok', app: 'PrivGuard', message: 'PrivGuard Regulatory Auditor API is running' }));
-
 app.use('/api/auth',       authRouter);
 app.use('/api/dashboard',  homeRouter);
 app.use('/api/violations', violationRouter);
