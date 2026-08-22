@@ -253,35 +253,35 @@
 .ds-badge-critical {
   color: var(--color-critical);
   background-color: var(--bg-critical);
-  border-color: var(--color-critical);
+  border-color: transparent;
 }
 .ds-badge-critical::before { background-color: var(--color-critical); }
 
 .ds-badge-high {
   color: var(--color-high);
   background-color: var(--bg-high);
-  border-color: var(--color-high);
+  border-color: transparent;
 }
 .ds-badge-high::before { background-color: var(--color-high); }
 
 .ds-badge-medium {
   color: var(--color-medium);
   background-color: var(--bg-medium);
-  border-color: var(--color-medium);
+  border-color: transparent;
 }
 .ds-badge-medium::before { background-color: var(--color-medium); }
 
 .ds-badge-low {
   color: var(--color-low);
   background-color: var(--bg-low);
-  border-color: var(--color-low);
+  border-color: transparent;
 }
 .ds-badge-low::before { background-color: var(--color-low); }
 
 .ds-badge-compliant {
   color: var(--color-compliant);
   background-color: var(--bg-compliant);
-  border-color: var(--color-compliant);
+  border-color: transparent;
 }
 .ds-badge-compliant::before { background-color: var(--color-compliant); }
 

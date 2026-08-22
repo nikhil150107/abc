@@ -159,50 +159,38 @@ export default function Violations() {
             <table className="ds-table">
               <thead>
                 <tr>
-                  <th>Severity</th>
                   <th>Finding</th>
-                  <th>Database Table / Origin</th>
                   <th>Type</th>
-                  <th>Endpoint</th>
+                  <th>Source</th>
+                  <th>Severity</th>
                   <th>Risk</th>
                   <th>Status</th>
-                  <th>Detected</th>
-                  <th>Action</th>
+                  <th>Time</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan="9" style={{ textAlign: 'center', padding: '48px 24px' }}>
+                    <td colSpan="7" style={{ textAlign: 'center', padding: '48px 24px' }}>
                       <div className="ds-heading-3 ds-text-muted ds-mb-sm">No compliance findings</div>
                       <div className="ds-text-body ds-text-secondary">No violations match the current filters.</div>
                     </td>
                   </tr>
                 ) : (
                   filtered.map((v) => (
-                    <tr key={v._id || v.violationId} onClick={() => setSelected(v)} style={{ cursor: 'pointer', transition: 'background-color 0.15s ease' }} className="violation-row" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') setSelected(v); }}>
-                      <td><span className={`ds-badge ds-badge-${v.severity.toLowerCase()}`}>{v.severity}</span></td>
-                      <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                    <tr key={v._id || v.violationId} onClick={() => setSelected(v)} style={{ cursor: 'pointer', transition: 'background-color 0.15s ease' }} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') setSelected(v); }}>
+                      <td style={{ fontWeight: 500, color: 'var(--text-primary)' }}>
                         {v.title || v.type.replace(/_/g, " ")}
                         {v.occurrences > 1 && (
                           <span className="ds-badge ds-badge-neutral" style={{ marginLeft: 8 }}>{v.occurrences}x</span>
                         )}
                       </td>
-                      <td>
-                        <code style={{ background: 'var(--bg-tertiary)', color: '#38bdf8', padding: '3px 6px', borderRadius: '4px', fontSize: '11px', fontWeight: 600 }}>
-                          {v.breachLocation?.table || (v.source === 'APPLICATION_LOG' ? 'application_audit_logs' : 'data_processing_events')}
-                        </code>
-                      </td>
                       <td>{v.type}</td>
-                      <td><code style={{ background: 'var(--bg-tertiary)', padding: '2px 6px', borderRadius: '4px', fontSize: '11px' }}>{v.endpoint || v.service || '—'}</code></td>
-                      <td style={{ fontWeight: 500 }}>{v.riskScore}</td>
+                      <td><code style={{ background: 'var(--bg-tertiary)', padding: '2px 6px', borderRadius: '4px', fontSize: '11px' }}>{v.endpoint || v.service || v.source || '—'}</code></td>
+                      <td><span className={`ds-badge ds-badge-${v.severity.toLowerCase()}`}>{v.severity}</span></td>
+                      <td>{v.riskScore}</td>
                       <td>{v.status}</td>
-                      <td style={{ whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>{timeAgo(v.timestamp)}</td>
-                      <td>
-                        <button className="ds-btn ds-btn-ghost" style={{ padding: '4px 8px', height: '24px', fontSize: '11px' }} onClick={(e) => { e.stopPropagation(); setSelected(v); }}>
-                          Investigate
-                        </button>
-                      </td>
+                      <td style={{ whiteSpace: 'nowrap' }}>{timeAgo(v.timestamp)}</td>
                     </tr>
                   ))
                 )}
