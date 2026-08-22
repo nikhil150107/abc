@@ -102,16 +102,6 @@ const scanTargetApp = async (req, res) => {
     const appName = application.name || (targetUrl.includes('5002') ? 'messenger-backend' : 'demoapp-core');
     const fiduciaryName = policy?.fiduciary?.name || application.name || 'Data Fiduciary';
 
-    // Reset previous target scan findings dynamically to avoid duplicate accumulation
-    await Violation.deleteMany({
-      service: {
-        $in: [
-          'demoapp-core', 'demoapp-commerce', 'demoapp-marketing', 'demoapp-storage',
-          'messenger-backend', 'messenger-app', appName, `${appName}-core`
-        ]
-      }
-    });
-
     const detectedViolations = [];
     const logFindings = [];
     const purposeFindings = [];
