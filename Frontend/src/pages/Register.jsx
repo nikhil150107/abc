@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { apiRequest } from "../api/api";
+import Logo from "../components/Logo";
 
 export default function Register() {
   const [formData, setFormData] = useState({ username: "", email: "", password: "" });
@@ -27,8 +28,9 @@ export default function Register() {
 
   return (
     <div className="ds-auth-layout">
-      <div className="ds-mb-lg" style={{ fontSize: '24px', fontWeight: '700', letterSpacing: '0.05em' }}>
-        PrivGuard
+      <div className="ds-mb-lg" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <Logo size={28} />
+        <span style={{ fontSize: '22px', fontWeight: '700', letterSpacing: '0.05em', color: '#0F172A' }}>PrivGuard</span>
       </div>
 
       <div className="ds-card auth-card-wrapper ds-card-body">

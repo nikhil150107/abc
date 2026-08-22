@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { io } from "socket.io-client";
 import axios from "axios";
 import { API_BASE_URL as API } from "../api/api";
+import Logo from "../components/Logo";
 
 export default function LiveMonitor() {
   const { user, logout } = useAuth();
@@ -159,7 +160,10 @@ export default function LiveMonitor() {
       {/* LEFT SIDEBAR */}
       <aside className="ds-sidebar" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
         <div className="sidebar-logo ds-flex-between">
-          PrivGuard
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Logo size={22} />
+            PrivGuard
+          </div>
           <label htmlFor="mobile-menu-toggle" className="mobile-menu-label" style={{ cursor: 'pointer', fontSize: '20px' }}>≡</label>
         </div>
         <input type="checkbox" id="mobile-menu-toggle" style={{ display: 'none' }} />
