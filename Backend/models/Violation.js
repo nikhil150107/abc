@@ -13,6 +13,7 @@ const violationSchema = new mongoose.Schema({
   endpoint:    { type: String },
   detectedPII:  [{ type: String }],
   detectedData: [{ type: String }],
+  evidence:     { type: mongoose.Schema.Types.Mixed, default: {} },
   occurrences:  { type: Number, default: 1 },
   policy: {
     policyId: String,

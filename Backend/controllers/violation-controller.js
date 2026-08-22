@@ -2,13 +2,82 @@ const Violation = require('../models/Violation');
 const Event     = require('../models/Event');
 const AuditLog  = require('../models/AuditLog');
 
+// ── PII masking ───────────────────────────────────────────────
+const maskEmail = (v) => {
+  if (!v || !v.includes('@')) return v;
+  const [user, domain] = v.split('@');
+  return `${user[0]}***@${domain}`;
+};
+
+const maskPhone = (v) => {
+  if (!v) return v;
+  const s = String(v).replace(/\D/g, '');
+  return `${'*'.repeat(Math.max(0, s.length - 4))}${s.slice(-4)}`;
+};
+
+const maskPAN = (v) => {
+  if (!v) return v;
+  return `${v.slice(0, 2)}${'*'.repeat(v.length - 4)}${v.slice(-2)}`;
+};
+
+const maskAadhaar = (v) => {
+  if (!v) return v;
+  return `****-****-${String(v).replace(/\D/g, '').slice(-4)}`;
+};
+
+const maskGeneric = (v) => {
+  if (!v) return v;
+  const s = String(v);
+  return `${s[0]}${'*'.repeat(Math.max(1, s.length - 2))}${s.slice(-1)}`;
+};
+
+// Build masked evidence object from raw payload
+const buildEvidence = (detectedPII = [], rawPayload = {}) => {
+  const evidence = {};
+  const src = typeof rawPayload === 'string' ? {} : rawPayload;
+
+  detectedPII.forEach(piiType => {
+    switch (piiType.toUpperCase()) {
+      case 'EMAIL':
+        if (src.email)   evidence.email   = maskEmail(src.email);
+        else             evidence.email   = 'u***@***.com';
+        break;
+      case 'PHONE':
+        if (src.phone)   evidence.phone   = maskPhone(src.phone);
+        else             evidence.phone   = '******0000';
+        break;
+      case 'PAN':
+        if (src.pan)     evidence.pan     = maskPAN(src.pan);
+        else             evidence.pan     = 'AB***1234F';
+        break;
+      case 'AADHAAR':
+        if (src.aadhaar) evidence.aadhaar = maskAadhaar(src.aadhaar);
+        else             evidence.aadhaar = '****-****-9012';
+        break;
+      default:
+        evidence[piiType.toLowerCase()] = maskGeneric(src[piiType.toLowerCase()] || piiType);
+    }
+  });
+
+  return evidence;
+};
+
 // POST /api/violations — Member 3 sends violation here
 const createViolation = async (req, res) => {
   try {
+    const body = req.body;
+
+    // Build masked evidence — never store raw PII values
+    const rawPayload = body.rawPayload || body.payload || {};
+    const evidence   = body.evidence || buildEvidence(body.detectedPII || body.detectedData || [], rawPayload);
+
     const data = {
-      ...req.body,
-      timestamp: req.body.timestamp ? new Date(req.body.timestamp) : new Date()
+      ...body,
+      evidence,
+      rawPayload:  undefined,  // strip raw payload before storing
+      timestamp:   body.timestamp ? new Date(body.timestamp) : new Date(),
     };
+
     const violation = await Violation.create(data);
 
     await AuditLog.create({
