@@ -6,8 +6,7 @@ import axios from "axios";
 import AuditReportModal from "../components/AuditReportModal";
 import ViolationModal from "../components/ViolationModal";
 import { generateAuditReportPDF } from "../utils/pdfGenerator";
-
-const API = "http://localhost:5000";
+import { API_BASE_URL as API } from "../api/api";
 
 // Kept for backward compatibility in modals
 const SEV_COLOR = { HIGH: "var(--color-high)", MEDIUM: "var(--color-medium)", LOW: "var(--color-low)", CRITICAL: "var(--color-critical)" };

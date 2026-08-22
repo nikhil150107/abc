@@ -41,8 +41,8 @@ const createEvent = async (req, res) => {
     const eventData = {
       eventId:   rawBody.eventId || `EVT-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
       type:      rawBody.type || rawBody.eventType || 'DATA_PROCESSING_EVENT',
-      source:    rawBody.source || 'DEMOAPP_API',
-      service:   rawBody.service || 'demoapp-core',
+      source:    rawBody.source || 'APPLICATION_API',
+      service:   rawBody.service || 'application-core',
       endpoint:  rawBody.endpoint || '/api',
       payload:   rawBody.payload || {},
       timestamp: timestamp,

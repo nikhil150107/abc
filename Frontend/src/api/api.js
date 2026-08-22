@@ -1,4 +1,5 @@
-const API_URL = "/api";
+export const API_BASE_URL = (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/$/, "");
+const API_URL = `${API_BASE_URL}/api`;
 
 export const apiRequest = async (endpoint, method = "GET", body = null, token = null) => {
   const headers = {
@@ -18,8 +19,9 @@ export const apiRequest = async (endpoint, method = "GET", body = null, token = 
     options.body = JSON.stringify(body);
   }
 
-  const response = await fetch(`${API_URL}${endpoint}`, options);
-  const data = await response.json();
+  const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  const response = await fetch(`${API_URL}${cleanEndpoint}`, options);
+  const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
     throw new Error(data.message || "Something went wrong");

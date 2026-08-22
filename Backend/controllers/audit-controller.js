@@ -11,7 +11,7 @@ try {
   console.warn('[audit-controller] guard-intelligence not loaded:', e.message);
 }
 
-const DEMOAPP_URL = process.env.DEMOAPP_URL || 'http://localhost:5001';
+const TARGET_APP_URL = process.env.TARGET_APP_URL || process.env.DEMOAPP_URL || 'http://localhost:5001';
 
 /**
  * Calculates a standard DPDPA Statutory Compliance Score based on 5 core statutory pillars:
@@ -64,26 +64,53 @@ const calculateComplianceScore = ({ hasNotice, hasRights, logFindings, purposeFi
 
 /**
  * POST /api/audit/scan-target
- * Runs an autonomous end-to-end DPDPA compliance audit on DemoApp (Target).
+ * Runs an autonomous end-to-end DPDPA compliance audit on the active target application.
  */
 const scanTargetApp = async (req, res) => {
   try {
     const io = req.app.get('io');
+    const targetUrl = req.body?.targetUrl || TARGET_APP_URL;
 
-    // 1. Ingest consolidated 3-layer evidence from DemoApp
-    const evidenceRes = await fetch(`${DEMOAPP_URL}/api/audit-feed/evidence`);
-    if (!evidenceRes.ok) {
+    // 1. Ingest consolidated 3-layer evidence from Target App (try /api/audit-feed/evidence then /audit-feed/evidence)
+    let evidenceRes;
+    try {
+      evidenceRes = await fetch(`${targetUrl}/api/audit-feed/evidence`);
+      if (!evidenceRes.ok) {
+        evidenceRes = await fetch(`${targetUrl}/audit-feed/evidence`);
+      }
+    } catch (_) {
+      try {
+        evidenceRes = await fetch(`${targetUrl}/audit-feed/evidence`);
+      } catch (connErr) {
+        return res.status(502).json({
+          success: false,
+          message: `Failed to connect to target application at ${targetUrl}. Is the client application running?`,
+          error: connErr.message
+        });
+      }
+    }
+
+    if (!evidenceRes || !evidenceRes.ok) {
       return res.status(502).json({
         success: false,
-        message: `Failed to connect to DemoApp at ${DEMOAPP_URL}. Is DemoApp running?`
+        message: `Failed to connect to target application at ${targetUrl}. Status: ${evidenceRes ? evidenceRes.status : 'No response'}`
       });
     }
 
-    const { evidence } = await evidenceRes.json();
+    const { evidence = {}, application = {} } = await evidenceRes.json();
     const { policy = {}, events = [], logs = [], consents = [], users = [] } = evidence;
+    const appName = application.name || (targetUrl.includes('5002') ? 'messenger-backend' : 'demoapp-core');
+    const fiduciaryName = policy?.fiduciary?.name || application.name || 'Data Fiduciary';
 
-    // Reset previous target scan findings to avoid duplicate accumulation
-    await Violation.deleteMany({ service: { $in: ['demoapp-core', 'demoapp-commerce', 'demoapp-marketing', 'demoapp-storage'] } });
+    // Reset previous target scan findings dynamically to avoid duplicate accumulation
+    await Violation.deleteMany({
+      service: {
+        $in: [
+          'demoapp-core', 'demoapp-commerce', 'demoapp-marketing', 'demoapp-storage',
+          'messenger-backend', 'messenger-app', appName, `${appName}-core`
+        ]
+      }
+    });
 
     const detectedViolations = [];
     const logFindings = [];
@@ -296,7 +323,7 @@ const scanTargetApp = async (req, res) => {
 
     // 2. Compute holistic compliance score
     const hasNotice = Boolean(policy?.itemizedPurposes?.length > 0);
-    const hasRights = Boolean(users.length > 0); // DemoApp provides active rights portal
+    const hasRights = Boolean(policy?.principalRights || users.length > 0);
 
     const complianceScore = calculateComplianceScore({
       hasNotice,
@@ -313,7 +340,8 @@ const scanTargetApp = async (req, res) => {
       entity: 'AuditScan',
       entityId: `SCAN-${Date.now()}`,
       details: {
-        target: 'DemoApp',
+        target: `${appName} (${targetUrl})`,
+        fiduciary: fiduciaryName,
         scannedLogs: logs.length,
         scannedEvents: events.length,
         distinctViolations: detectedViolations.length,
@@ -325,7 +353,8 @@ const scanTargetApp = async (req, res) => {
       success: true,
       scanSummary: {
         scannedAt: new Date().toISOString(),
-        target: 'DemoApp (http://localhost:5001)',
+        target: `${appName} (${targetUrl})`,
+        fiduciary: fiduciaryName,
         scannedLogs: logs.length,
         scannedEvents: events.length,
         violationsDetected: detectedViolations.length,
@@ -361,10 +390,14 @@ const exportAuditReport = async (req, res) => {
       retentionFindings: violations.filter(v => v.type === 'RETENTION_VIOLATION')
     });
 
+    // Extract dynamic application / fiduciary name from recent audit log if available
+    const lastAudit = await AuditLog.findOne({ action: 'TARGET_AUDIT_COMPLETED' }).sort({ createdAt: -1 });
+    const targetApplication = lastAudit?.details?.fiduciary || lastAudit?.details?.target || 'Data Fiduciary Enterprise';
+
     const report = {
       title: 'Digital Personal Data Protection Act (DPDPA) Compliance Audit Report',
       auditAuthority: 'PrivGuard Autonomous Auditor Platform',
-      targetApplication: 'DemoApp Technologies Pvt. Ltd.',
+      targetApplication,
       generatedAt: new Date().toISOString(),
       statutoryFramework: 'Digital Personal Data Protection Act 2023 & DPDP Rules 2025 (MeitY)',
       executiveSummary: {

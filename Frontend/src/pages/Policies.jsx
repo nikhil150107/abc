@@ -2,8 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import axios from "axios";
-
-const API = "http://localhost:5000";
+import { API_BASE_URL as API } from "../api/api";
 
 function getCategory(rule) {
   if (!rule) return "Statutory Control";
